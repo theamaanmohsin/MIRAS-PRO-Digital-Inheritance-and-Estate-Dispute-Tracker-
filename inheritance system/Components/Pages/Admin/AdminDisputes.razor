@@ -1,0 +1,203 @@
+@page "/admin/disputes"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject DisputeService DisputeSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>Dispute Applications — Admin</PageTitle>
+
+@if (!_ready)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Dispute &amp; Case Applications</h1>
+            <p class="page-sub">Legal review — approve, reject, or pend dispute &amp; case applications</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="admin-alert-banner" style="margin-bottom:1rem">@_message</div>
+    }
+
+    <div class="admin-panel">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
+            <input class="form-input" style="max-width:280px" placeholder="Search..."
+                   @bind="_search" @bind:event="oninput" @onkeyup="Load" />
+            <select class="form-select" style="max-width:180px" @bind="_statusFilter" @bind:after="Load">
+                <option value="">All statuses</option>
+                @foreach (var s in AppConstants.DisputeStatuses)
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        </div>
+
+        @if (!_items.Any())
+        {
+            <p style="color:var(--text-muted);">No applications found.</p>
+        }
+        else
+        {
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Applicant</th>
+                        <th>Property</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in _items)
+                    {
+                        <tr>
+                            <td>#@d.DisputeId</td>
+                            <td>@d.FiledByName</td>
+                            <td>
+                                <strong>@d.PropertyTitle</strong>
+                                @if (!string.IsNullOrEmpty(d.Location))
+                                {
+                                    <br /><span style="font-size:0.8rem;color:var(--text-muted)">@d.Location</span>
+                                }
+                            </td>
+                            <td>@d.DisputeType</td>
+                            <td><span class="badge @StatusBadge(d.Status)">@d.Status</span></td>
+                            <td>@d.CreatedAt.ToString("d MMM yyyy")</td>
+                            <td>
+                                <button class="btn btn-xs btn-outline" @onclick="() => OpenReview(d)">Review</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@if (_reviewOpen && _selected != null)
+{
+    <div class="disp-modal-overlay" @onclick="CloseReview">
+        <div class="disp-modal" style="max-width:620px" @onclick:stopPropagation="true">
+            <div class="disp-modal-header">
+                <h3>Review Application #@_selected.DisputeId</h3>
+                <button class="disp-modal-close" @onclick="CloseReview">×</button>
+            </div>
+            <div class="disp-modal-body">
+                <p><strong>Applicant:</strong> @_selected.FiledByName</p>
+                <p><strong>Property:</strong> @_selected.PropertyTitle</p>
+                <p><strong>Type:</strong> @_selected.DisputeType</p>
+                <p><strong>Description:</strong></p>
+                <p style="background:var(--surface-muted);padding:12px;border-radius:8px;font-size:0.9rem;">@_selected.Description</p>
+
+                <div class="form-group">
+                    <label class="form-label">Decision *</label>
+                    <select class="form-select" @bind="_reviewStatus">
+                        @foreach (var s in AppConstants.DisputeStatuses)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+
+                @if (_reviewStatus == "Rejected")
+                {
+                    <div class="form-group">
+                        <label class="form-label">Rejection reason (shown to user) *</label>
+                        <textarea class="form-input" rows="3" @bind="_rejectionReason"></textarea>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;">
+                        <input type="checkbox" @bind="_allowUserEdit" />
+                        Allow user to edit and resubmit this application
+                    </label>
+                }
+            </div>
+            <div class="disp-modal-footer">
+                <button class="btn-secondary" @onclick="CloseReview">Cancel</button>
+                <button class="btn-save" @onclick="SubmitReview" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Save Decision")
+                </button>
+                <button class="btn-danger" @onclick="DeleteDispute" disabled="@_saving">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    bool _ready;
+    List<DisputeListItem> _items = new();
+    string _search = "";
+    string _statusFilter = "";
+    string _message = "";
+    bool _reviewOpen;
+    DisputeListItem? _selected;
+    string _reviewStatus = "Pending";
+    string _rejectionReason = "";
+    bool _allowUserEdit;
+    bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsAdmin) { Nav.NavigateTo("/login/admin", forceLoad: true); return; }
+        await Load();
+        _ready = true;
+    }
+
+    async Task Load()
+    {
+        _items = await DisputeSvc.GetAllDisputesForAdminAsync(
+            string.IsNullOrWhiteSpace(_search) ? null : _search,
+            string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter);
+    }
+
+    void OpenReview(DisputeListItem d)
+    {
+        _selected = d;
+        _reviewStatus = d.Status;
+        _rejectionReason = d.AdminRejectionReason ?? "";
+        _allowUserEdit = d.AllowUserEdit;
+        _reviewOpen = true;
+    }
+
+    void CloseReview() => _reviewOpen = false;
+
+    async Task SubmitReview()
+    {
+        if (_selected == null) return;
+        _saving = true;
+        var (ok, msg) = await DisputeSvc.ReviewByAdminAsync(
+            _selected.DisputeId, CurrentUser.UserId, _reviewStatus,
+            _rejectionReason, _allowUserEdit);
+        _message = msg;
+        _saving = false;
+        if (ok) { _reviewOpen = false; await Load(); }
+    }
+
+    async Task DeleteDispute()
+    {
+        if (_selected == null) return;
+        _saving = true;
+        var (ok, msg) = await DisputeSvc.DeleteByAdminAsync(_selected.DisputeId);
+        _message = msg;
+        _saving = false;
+        if (ok) { _reviewOpen = false; await Load(); }
+    }
+
+    static string StatusBadge(string? s) => s switch
+    {
+        "Approved" => "badge-green",
+        "Rejected" => "badge-red",
+        "Under Review" => "badge-blue",
+        _ => "badge-amber"
+    };
+}

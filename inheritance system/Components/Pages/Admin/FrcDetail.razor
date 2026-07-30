@@ -1,0 +1,199 @@
+@page "/admin/frc-detail/{Id:int}"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using InheritanceSystem.Models
+@using inheritance_system.Services
+@inject FrcService FrcSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>FRC Review Detail</PageTitle>
+
+
+
+@if (!_ready)
+{
+    <div class="loading-wrap"><div class="spinner"></div></div>
+}
+else if (_frc == null)
+{
+    <div style="text-align:center;padding:3rem;color:var(--text-muted)">
+        FRC submission not found.
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">FRC Review — @_frc.User?.FullName</h1>
+            <p class="page-sub">FRC # @_frc.FrcNumber · @_frc.UploadedAt.ToString("d MMMM yyyy")</p>
+        </div>
+        <a href="/admin/frc-queue" class="btn btn-outline">← Back to Queue</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert-banner @(_message.ToLower().Contains("approved") || _message.ToLower().Contains("rejected") ? "alert-ok" : "alert-err")">
+            @_message
+        </div>
+    }
+
+    <div class="detail-layout">
+
+        <!-- Document Preview -->
+        <div class="panel">
+            <div class="panel-hdr">
+                <h3 class="panel-title">Uploaded Certificate</h3>
+                <a href="@_frc.DocumentFilePath" target="_blank"
+                   class="btn btn-sm btn-outline">Open Full ↗</a>
+            </div>
+            <div class="doc-wrap">
+                @if (_frc.OriginalFileName?.ToLower().EndsWith(".pdf") == true)
+                {
+                    <iframe src="@_frc.DocumentFilePath"
+                            class="doc-iframe" title="FRC Certificate"></iframe>
+                }
+                else
+                {
+                    <img src="@_frc.DocumentFilePath"
+                         class="doc-img" alt="FRC Certificate" />
+                }
+            </div>
+            <div class="doc-meta">
+                <span>@_frc.OriginalFileName</span>
+                <span>@_frc.FileSizeDisplay()</span>
+            </div>
+        </div>
+
+        <!-- Info + Decision -->
+        <div>
+            <div class="panel" style="margin-bottom:1.1rem">
+                <div class="panel-hdr">
+                    <h3 class="panel-title">Citizen Profile</h3>
+                    <span class="badge @_frc.StatusBadgeClass()">@_frc.Status</span>
+                </div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <span class="info-lbl">Full Name</span>
+                        <span class="info-val">@_frc.User?.FullName</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-lbl">Email</span>
+                        <span class="info-val">@_frc.User?.Email</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-lbl">FRC Number</span>
+                        <span class="frc-mono">@_frc.FrcNumber</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-lbl">Submitted</span>
+                        <span class="info-val">@_frc.UploadedAt.ToString("d MMM yyyy, HH:mm")</span>
+                    </div>
+                </div>
+            </div>
+
+            @if (_frc.IsPending())
+            {
+                <div class="panel decision-panel">
+                    <div class="panel-hdr">
+                        <h3 class="panel-title">Admin Decision</h3>
+                    </div>
+
+                    <div style="margin-bottom:10px">
+                        <label class="form-label">Approval Notes (optional)</label>
+                        <textarea class="form-textarea" rows="2"
+                                  placeholder="Optional notes for the record…"
+                                  @bind="_approveNotes"></textarea>
+                    </div>
+                    <button class="btn btn-teal btn-block" @onclick="Approve">
+                        ✓ Approve &amp; Lock Profile
+                    </button>
+
+                    <div class="divider"><span>or</span></div>
+
+                    <div>
+                        <label class="form-label">Rejection Reason *</label>
+                        <textarea class="form-textarea" rows="3"
+                                  placeholder="State clearly what needs to be corrected…"
+                                  @bind="_rejectNotes"></textarea>
+                    </div>
+                    <button class="btn btn-danger btn-block" @onclick="Reject">
+                        ✕ Reject &amp; Return to Citizen
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="panel reviewed-panel">
+                    <div class="panel-hdr">
+                        <h3 class="panel-title">Review Record</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-lbl">Decision</span>
+                            <span class="badge @_frc.StatusBadgeClass()">@_frc.Status</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-lbl">Reviewed At</span>
+                            <span class="info-val">
+                                @_frc.ReviewedAt?.ToString("d MMM yyyy, HH:mm")
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_frc.AdminNotes))
+                        {
+                            <div class="info-row">
+                                <span class="info-lbl">Notes</span>
+                                <span class="info-val">@_frc.AdminNotes</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    bool _ready = false;
+    FrcDocument? _frc;
+    string _approveNotes = "";
+    string _rejectNotes = "";
+    string _message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+
+        if (!CurrentUser.IsAdmin)
+        {
+            Nav.NavigateTo("/login/admin", forceLoad: true);
+            return;
+        }
+
+        _frc = await FrcSvc.GetByIdAsync(Id);
+        _ready = true;
+    }
+
+    async Task Approve()
+    {
+        var (ok, msg) = await FrcSvc.ApproveAsync(
+            Id, CurrentUser.UserId, CurrentUser.FullName, _approveNotes);
+        _message = msg;
+        _frc = await FrcSvc.GetByIdAsync(Id);
+    }
+
+    async Task Reject()
+    {
+        if (string.IsNullOrWhiteSpace(_rejectNotes))
+        {
+            _message = "Rejection reason is required.";
+            return;
+        }
+        var (ok, msg) = await FrcSvc.RejectAsync(
+            Id, CurrentUser.UserId, CurrentUser.FullName, _rejectNotes);
+        _message = msg;
+        _frc = await FrcSvc.GetByIdAsync(Id);
+    }
+}

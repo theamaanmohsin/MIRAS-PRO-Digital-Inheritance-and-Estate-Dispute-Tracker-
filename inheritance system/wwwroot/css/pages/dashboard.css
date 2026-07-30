@@ -1,0 +1,786 @@
+/* ============================================================
+   FILE: dashboard.css
+   PURPOSE: Main user dashboard — the first screen after login.
+            Shows stat cards (properties, value, heirs, disputes),
+            a total estate value strip, quick-action cards, and
+            a recent-properties table.
+   DEPENDS ON: miras-theme.css (variables, resets, keyframes)
+   ============================================================ */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 1 — BASE RESET
+   Only applied on pages that load this file.
+   ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Source Sans 3', Inter, system-ui, sans-serif;
+    background: var(--surface-muted); /* Off-white page background */
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 2 — TOP NAVIGATION BAR
+   Dark-themed nav rendered inside the hero gradient strip.
+   The global .dash-nav override in miras-theme.css converts
+   this to a white bar on authenticated pages.
+   ────────────────────────────────────────────────────────── */
+
+/* Logo + wordmark wrapper */
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+/* Coloured square icon box holding the "M" monogram */
+.nav-logo-box {
+    width: 36px;
+    height: 36px;
+    background: var(--green-mid); /* Brand blue */
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: #a8d5b5;
+    font-weight: 700;
+    /* Spring bounce on hover — defined on parent .nav-brand */
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-brand:hover .nav-logo-box {
+    transform: scale(1.08);
+}
+
+/* "MirasPro" wordmark — coloured for dark nav background */
+.nav-brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: #87acdf;
+    letter-spacing: 0.3px;
+}
+
+    .nav-brand-name span {
+        color: #709ad5;
+    }
+/* "Pro" portion slightly different shade */
+
+/* Horizontal list of navigation links */
+.nav-links {
+    display: flex;
+    gap: 1.75rem;
+    list-style: none;
+}
+
+    .nav-links a {
+        color: #a8d5b5;
+        text-decoration: none;
+        font-size: 14px;
+        letter-spacing: 0.3px;
+        transition: color 0.2s;
+        cursor: pointer;
+    }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #e8f5ee;
+        }
+            /* Brighten on hover/active */
+
+            /* Active underline indicator below the current nav link */
+            .nav-links a.active::after {
+                content: '';
+                display: block;
+                height: 2px;
+                background: var(--green-accent);
+                margin-top: 4px;
+                border-radius: 2px;
+            }
+
+/* Right-side cluster: avatar + user info + logout */
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Circular avatar showing user initials */
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--green-accent);
+    color: var(--green-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+/* User name + role text block */
+.user-info {
+    color: #c8e6d4;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+    .user-info strong {
+        color: #e8f5ee;
+        display: block;
+        font-weight: 600;
+    }
+    /* Full name */
+    .user-info small {
+        color: var(--gold);
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+/* Role tag */
+
+/* Red-border logout button */
+.btn-logout {
+    background: transparent;
+    border: 1px solid #df5d69;
+    color: #e72b3d;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: background 0.2s, color 0.2s;
+}
+
+    .btn-logout:hover {
+        background: #e72b3d;
+        color: #fff;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 3 — HERO GREETING STRIP
+   Dark gradient banner at the top of the dashboard.
+   Contains the welcome message, estate badge, and intro text.
+   The stat cards below overlap this using negative margin-top.
+   ────────────────────────────────────────────────────────── */
+.greet {
+    background: linear-gradient(135deg, #2a2a33 0%, #1a3a6b 50%, #0056d6 100%);
+    padding: 3rem 2.5rem 5rem; /* Extra bottom padding — stat cards overlap up from below */
+    position: relative;
+    overflow: hidden;
+}
+
+    /* Radial glow overlays — decorative, not functional */
+    .greet::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: radial-gradient(circle at 15% 50%, rgba(46,125,82,0.18) 0%, transparent 45%), radial-gradient(circle at 85% 20%, rgba(76,175,125,0.10) 0%, transparent 40%);
+    }
+
+/* Inner max-width wrapper */
+.greet-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* "WELCOME BACK" pill badge above the heading */
+.greet-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold);
+    font-size: 12px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    animation: fadeInUp 0.5s var(--ease-out) both; /* Floats in on load */
+}
+
+/* Main greeting headline — "Good morning, Ahmed" */
+.greet h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px;
+    color: #e8f5ee;
+    font-weight: 700;
+    line-height: 1.25;
+    animation: fadeInUp 0.5s var(--ease-out) 0.07s both;
+}
+
+    .greet h1 span {
+        color: var(--green-accent);
+        font-style: italic;
+    }
+/* User's name */
+
+/* Subtitle — "Your estate dashboard" */
+.greet p {
+    color: #7aaa8e;
+    font-size: 15px;
+    margin-top: 8px;
+    max-width: 600px;
+    line-height: 1.7;
+    animation: fadeInUp 0.5s var(--ease-out) 0.14s both;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 4 — MAIN CONTENT WRAPPER
+   Negative top margin overlaps the stat cards onto the hero.
+   ────────────────────────────────────────────────────────── */
+.dash-main {
+    max-width: 1200px;
+    margin: -3rem auto 0; /* -3rem lifts cards into the hero */
+    padding: 0 2.5rem 4rem;
+    position: relative;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 5 — STAT CARDS GRID
+   4 summary cards: Properties · Total Value · Heirs · Disputes
+   Each has a coloured top accent bar and an icon background.
+   ────────────────────────────────────────────────────────── */
+
+/* 4-column grid for the stat cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Individual stat card */
+.stat-card {
+    background: #fff;
+    border: 1px solid var(--green-border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(26,61,43,0.06);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
+    will-change: transform; /* GPU hint for smooth hover */
+    animation: fadeInUp 0.45s var(--ease-out) both;
+}
+    /* Staggered entrance — each card floats in slightly after the previous */
+    .stat-card:nth-child(1) {
+        animation-delay: 0.08s;
+    }
+
+    .stat-card:nth-child(2) {
+        animation-delay: 0.14s;
+    }
+
+    .stat-card:nth-child(3) {
+        animation-delay: 0.20s;
+    }
+
+    .stat-card:nth-child(4) {
+        animation-delay: 0.26s;
+    }
+
+    /* Lift + deeper shadow on hover */
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(26,61,43,0.12);
+    }
+
+    /* Coloured accent bar running across the top of each card */
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--green-mid); /* Default: blue */
+    }
+
+    .stat-card.gold::before {
+        background: var(--gold);
+    }
+    /* Gold — total value card */
+    .stat-card.danger::before {
+        background: var(--danger);
+    }
+/* Red  — disputes card    */
+
+/* Square icon container inside each card */
+.stat-icon-wrap {
+    width: 42px;
+    height: 42px;
+    background: var(--green-pale);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 0.85rem;
+}
+
+.stat-card.gold .stat-icon-wrap {
+    background: var(--gold-light);
+}
+/* Warm tint for value card  */
+.stat-card.danger .stat-icon-wrap {
+    background: #fbeae6;
+}
+/* Red tint for disputes card */
+
+/* Small uppercase label above the number — "PROPERTIES", "HEIRS" etc. */
+.stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+}
+
+/* The large number — "12", "RM 1.4M" etc. */
+.stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    color: var(--text-dark);
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Small helper text below the number — "across 3 states" */
+.stat-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 6 — TOTAL ESTATE VALUE STRIP
+   Full-width dark banner showing the combined portfolio value.
+   ────────────────────────────────────────────────────────── */
+.total-strip {
+    background: var(--green-dark); /* Dark slate background */
+    border-radius: 14px;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+    .total-strip .label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gold);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 4px;
+    }
+
+    .total-strip .amount {
+        font-family: 'Playfair Display', serif;
+        font-size: 32px;
+        color: #e8f5ee;
+        font-weight: 700;
+    }
+
+    .total-strip .sub {
+        color: #7aaa8e;
+        font-size: 13px;
+        margin-top: 2px;
+    }
+
+    .total-strip .ornament {
+        color: var(--gold);
+        font-size: 22px;
+    }
+/* Decorative icon on the right */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 7 — SECTION TITLE ROW
+   Row with a heading on the left and a link on the right.
+   Used above Quick Actions and Recent Properties table.
+   ────────────────────────────────────────────────────────── */
+.row-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+    .row-title h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 22px;
+        color: var(--text-dark);
+        font-weight: 700;
+    }
+
+    .row-title p {
+        font-size: 12px;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 600;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 8 — QUICK ACTION CARDS
+   4 shortcut cards: Add Property · Add Heir · File Dispute · Upload Doc
+   Slide slightly right on hover; left border changes colour.
+   ────────────────────────────────────────────────────────── */
+
+/* 4-column grid of shortcut cards */
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+/* Individual action card */
+.action-card {
+    background: #fff;
+    border: 1px solid var(--green-border);
+    border-left: 3px solid var(--green-mid); /* Blue left accent */
+    border-radius: 10px;
+    padding: 1.25rem;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: border-left-color 0.2s, background 0.2s, transform 0.2s var(--ease-out), box-shadow 0.2s;
+    display: block;
+    will-change: transform;
+    animation: fadeInUp 0.45s var(--ease-out) 0.3s both;
+}
+    /* Hover — left border turns gold, card slides right */
+    .action-card:hover {
+        border-left-color: var(--gold);
+        background: var(--green-pale);
+        transform: translateX(3px);
+        box-shadow: 0 4px 16px rgba(26,61,43,0.08);
+    }
+
+/* Emoji or icon inside each action card */
+.action-icon {
+    width: 38px;
+    height: 38px;
+    background: var(--green-pale);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 0.75rem;
+}
+
+/* Card title — "Register Property" */
+.action-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+/* Card description — "Add a new estate asset" */
+.action-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 9 — RECENT PROPERTIES TABLE
+   Shows the 5 most recent property records with status pills,
+   type pills, and icon action buttons.
+   ────────────────────────────────────────────────────────── */
+
+/* White rounded card wrapping the table */
+.table-card {
+    background: #fff;
+    border: 1px solid var(--green-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(26,61,43,0.04);
+    animation: fadeInUp 0.45s var(--ease-out) 0.35s both;
+}
+
+    .table-card table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Column headers — small uppercase labels */
+    .table-card thead th {
+        background: var(--green-light);
+        text-align: left;
+        padding: 14px 18px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        border-bottom: 1px solid var(--green-border);
+    }
+
+    /* Data rows */
+    .table-card tbody td {
+        padding: 16px 18px;
+        font-size: 14px;
+        color: var(--text-dark);
+        border-bottom: 1px solid #ecf5ef;
+    }
+
+    .table-card tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-card tbody tr:hover {
+        background: #f6f9ff;
+        transition: background 0.15s;
+    }
+/* Subtle row highlight */
+
+/* Property title (bold) and subtitle (location, muted) */
+.prop-title {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.prop-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 10 — STATUS & TYPE PILLS
+   FIX: pill-active previously used color: #006aff (blue) on
+   a green background — wrong semantic and contrast failure.
+   All pills now use proper semantic background/foreground pairs.
+   ────────────────────────────────────────────────────────── */
+.pill {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.4px;
+}
+
+.pill-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+/* Green — active/approved     */
+.pill-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+/* Amber — awaiting action     */
+.pill-closed {
+    background: #f1f5f9;
+    color: #475569;
+}
+/* Grey  — archived/closed     */
+.pill-residential {
+    background: rgba(46,125,82,0.12);
+    color: #15803d;
+}
+/* Property type */
+.pill-commercial {
+    background: rgba(201,168,76,0.18);
+    color: #92400e;
+}
+/* Property type */
+.pill-digital {
+    background: #dbeafe;
+    color: #1e40af;
+}
+/* Property type */
+.pill-agricultural {
+    background: #ecfccb;
+    color: #3f6212;
+}
+/* Property type */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 11 — ROW ACTION BUTTONS
+   Small icon-only buttons (view / edit / delete) in each row.
+   ────────────────────────────────────────────────────────── */
+.row-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Single icon action button */
+.icon-btn {
+    background: transparent;
+    border: 1px solid var(--green-border);
+    color: var(--green-primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+    .icon-btn:hover {
+        background: var(--green-pale);
+        border-color: var(--green-mid);
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 12 — EMPTY STATE
+   Shown when no properties exist yet. Full-centre layout
+   with an icon, message, and "Add Property" CTA button.
+   ────────────────────────────────────────────────────────── */
+.empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+    .empty-state .em-icon {
+        font-size: 38px;
+        margin-bottom: 0.75rem;
+        opacity: 0.4;
+    }
+    /* Faded icon  */
+    .empty-state h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 20px;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+    }
+
+    .empty-state p {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-bottom: 1.25rem;
+    }
+
+    /* CTA button inside empty state */
+    .empty-state .btn-primary {
+        background: var(--green-mid);
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+        display: inline-block;
+    }
+
+        .empty-state .btn-primary:hover {
+            background: var(--green-primary);
+            transform: translateY(-1px);
+        }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 13 — LOADING STATE + ERROR ALERT
+   Shown while API data is fetching or if the request fails.
+   ────────────────────────────────────────────────────────── */
+.loading {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--green-border);
+    border-top-color: var(--green-mid); /* Blue rotating segment */
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Red error banner shown when API call fails */
+.alert-error {
+    background: #fbeae6;
+    border: 1px solid #f1b9ae;
+    color: #8b2718;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 1.5rem;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 14 — RESPONSIVE BREAKPOINTS
+   ────────────────────────────────────────────────────────── */
+
+/* Tablet — 2-column grids, hide nav links */
+@media (max-width: 900px) {
+    .stats-grid, .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .nav-links {
+        display: none;
+    }
+    /* Hidden — hamburger menu would replace on mobile */
+    .greet h1 {
+        font-size: 28px;
+    }
+}
+
+/* Mobile — single column, tighter padding */
+@media (max-width: 560px) {
+    .stats-grid, .actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dash-main {
+        padding: 0 1rem 3rem;
+    }
+
+    .greet {
+        padding: 2rem 1rem 4rem;
+    }
+}

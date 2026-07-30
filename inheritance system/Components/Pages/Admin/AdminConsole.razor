@@ -1,0 +1,206 @@
+@page "/admin/console"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using InheritanceSystem.Models
+@using inheritance_system.Services
+@inject AdminService AdminSvc
+@inject FrcService FrcSvc
+@inject ComplianceService ComplianceSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>Admin Console — MirasPro</PageTitle>
+
+<HeadContent>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+@if (!_ready)
+{
+    <div class="loading-wrap"><div class="spinner"></div></div>
+}
+else if (!string.IsNullOrEmpty(_loadError))
+{
+    <div class="alert-banner alert-banner-danger">@_loadError</div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Admin Console</h1>
+            <p class="page-sub">Governance, legal case review, FRC verification &amp; dispute resolution</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a href="/admin/frc-queue" class="btn btn-gold">
+                 Review FRC Queue
+                @if (_pendingFrc > 0)
+                {
+                    <span class="btn-badge">@_pendingFrc</span>
+                }
+            </a>
+            <a href="/admin/disputes" class="btn btn-primary"> Review Applications</a>
+            <a href="/admin/users" class="btn btn-outline"> All Users</a>
+            <a href="/admin/documents" class="btn btn-outline"> All Documents</a>
+            <a href="/admin/compliance" class="btn btn-outline"> User Compliance</a>
+            <a href="/admin/security" class="btn btn-outline"> Security</a>
+        </div>
+    </div>
+
+    @if (_usersMissingDocs > 0)
+    {
+        <div class="alert-banner alert-banner-danger">
+            <strong>@_usersMissingDocs user(s)</strong> have missing FRC or property documents.
+            <a href="/admin/compliance" class="alert-link">Review compliance </a>
+        </div>
+    }
+
+    @if (_pendingFrc > 0)
+    {
+        <div class="alert-banner">
+            <div class="alert-pulse"></div>
+            <span><strong>@_pendingFrc</strong> FRC submission@(_pendingFrc > 1 ? "s" : "") awaiting your review.</span>
+            <a href="/admin/frc-queue" class="alert-link">Review Now </a>
+        </div>
+    }
+
+    <div class="stats-grid">
+        <div class="stat-card stat-navy">
+            <div class="stat-icon">??</div>
+            <div class="stat-num">@_totalUsers</div>
+            <div class="stat-lbl">Registered Users</div>
+        </div>
+        <div class="stat-card stat-gold">
+            <div class="stat-icon">??</div>
+            <div class="stat-num">@_totalProperties</div>
+            <div class="stat-lbl">Registered Properties</div>
+        </div>
+        <div class="stat-card stat-amber">
+            <div class="stat-icon">??</div>
+            <div class="stat-num">@_pendingFrc</div>
+            <div class="stat-lbl">Pending FRC Reviews</div>
+            <div class="stat-sub">@_approvedFrc approved · @_rejectedFrc rejected</div>
+        </div>
+        <div class="stat-card stat-red">
+            <div class="stat-icon">??</div>
+            <div class="stat-num">@_activeDisputes</div>
+            <div class="stat-lbl">Active Disputes</div>
+        </div>
+    </div>
+
+    <div class="panels-grid">
+        <div class="panel">
+            <div class="panel-hdr">
+                <h3 class="panel-title">Recent Pending FRCs</h3>
+                <a href="/admin/frc-queue" class="panel-link">View All </a>
+            </div>
+            @if (!_recentFrc.Any())
+            {
+                <div class="empty-msg">No pending submissions.</div>
+            }
+            else
+            {
+                @foreach (var frc in _recentFrc)
+                {
+                    <div class="frc-mini-row">
+                        <div class="frc-mini-avatar">
+                            @(frc.User?.FullName?.FirstOrDefault() ?? 'U')
+                        </div>
+                        <div style="flex:1;min-width:0">
+                            <div class="frc-mini-name">@frc.User?.FullName</div>
+                            <div class="frc-mini-sub">FRC# @frc.FrcNumber · @frc.UploadedAt.ToString("d MMM")</div>
+                        </div>
+                        <span class="badge badge-amber">@frc.Status</span>
+                        <a href="/admin/frc-detail/@frc.Id" class="mini-review">Review</a>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="panel">
+            <div class="panel-hdr">
+                <h3 class="panel-title">Audit Log</h3>
+                <span class="badge badge-blue">Recent 10</span>
+            </div>
+            @if (!_auditLogs.Any())
+            {
+                <div class="empty-msg">No activity yet.</div>
+            }
+            else
+            {
+                <div style="overflow-x:auto">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Admin</th>
+                                <th>Details</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in _auditLogs)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="badge @log.ActionBadgeClass()">@log.Action</span>
+                                    </td>
+                                    <td>@log.AdminName</td>
+                                    <td class="audit-details">@log.Details</td>
+                                    <td style="color:var(--text-muted);white-space:nowrap">
+                                        @log.CreatedAt.ToString("d MMM, HH:mm")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    bool _ready;
+    string? _loadError;
+    int _totalUsers, _totalProperties, _activeDisputes;
+    int _pendingFrc, _approvedFrc, _rejectedFrc, _usersMissingDocs;
+    List<FrcDocument> _recentFrc = new();
+    List<AdminAuditLog> _auditLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+
+        if (!CurrentUser.IsAdmin)
+        {
+            Nav.NavigateTo("/login/admin", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            _totalUsers = await AdminSvc.TotalUsersAsync();
+            _totalProperties = await AdminSvc.TotalPropertiesAsync();
+            _activeDisputes = await AdminSvc.ActiveDisputesAsync();
+            _pendingFrc = await FrcSvc.CountByStatusAsync("Pending");
+            _approvedFrc = await FrcSvc.CountByStatusAsync("Approved");
+            _rejectedFrc = await FrcSvc.CountByStatusAsync("Rejected");
+            _recentFrc = (await FrcSvc.GetAllAsync("Pending")).Take(5).ToList();
+            _auditLogs = await AdminSvc.RecentLogsAsync(10);
+
+            var compliance = await ComplianceSvc.GetAllUsersComplianceAsync();
+            _usersMissingDocs = compliance.Count(c => !c.IsComplete);
+        }
+        catch (Exception ex)
+        {
+            _loadError = "Could not load console data. " + ex.Message;
+            Console.WriteLine($"ADMIN CONSOLE: {ex}");
+        }
+        finally
+        {
+            _ready = true;
+        }
+    }
+}

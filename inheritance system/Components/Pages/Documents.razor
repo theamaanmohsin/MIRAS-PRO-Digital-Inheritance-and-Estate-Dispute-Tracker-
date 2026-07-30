@@ -1,0 +1,463 @@
+@page "/documents"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.DocumentService DocumentSvc
+@inject inheritance_system.Services.HeirService HeirSvc
+@inject inheritance_system.Services.ComplianceService ComplianceSvc
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Forms
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a class="active" href="/documents">Documents</a></li>
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <h1>Property <span>Documents</span></h1>
+            <p>Upload and manage ownership deeds, court papers and inheritance certificates</p>
+        </div>
+        <button class="btn-primary" @onclick="OpenUploadModal">&#x2B; Upload Document</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="page-main">
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert-success">&#x2713; @successMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    @* ── Rejection notices — shown like FRC rejection banners ── *@
+    @foreach (var rejected in documents.Where(d => d.Status == "Rejected"))
+    {
+        <div class="doc-rejected-banner">
+            <div class="drb-icon">&#x26A0;</div>
+            <div class="drb-body">
+                <strong>Document Rejected: @rejected.FileName</strong>
+                @if (!string.IsNullOrEmpty(rejected.AdminNotes))
+                {
+                    <p>Reason: @rejected.AdminNotes</p>
+                }
+                else
+                {
+                    <p>This document was rejected by the administrator. Please upload a corrected version.</p>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_compliance != null && _compliance.Missing.Any(m => m.Code.StartsWith("DOC_") || m.Code == "FRC_MISSING" || m.Code == "FRC_REJECTED"))
+    {
+        <div class="compliance-banner">
+            <h3>Missing documents</h3>
+            <ul>
+                @foreach (var item in _compliance.Missing.Where(m => m.Code.StartsWith("DOC_") || m.Code.StartsWith("FRC_") || m.Code == "NO_PROPERTY"))
+                {
+                    <li class="@item.Severity">@item.Message</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Documents</div>
+            <div class="stat-value">@statTotal</div>
+            <div class="stat-sub">All uploaded files</div>
+        </div>
+        <div class="stat-card gold">
+            <div class="stat-label">Properties Covered</div>
+            <div class="stat-value">@statProperties</div>
+            <div class="stat-sub">With documents</div>
+        </div>
+        <div class="stat-card ok">
+            <div class="stat-label">Approved</div>
+            <div class="stat-value">@documents.Count(d => d.Status == "Approved")</div>
+            <div class="stat-sub">Verified by admin</div>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" placeholder="Search by file name or property..."
+                   value="@searchQuery" @oninput="OnSearchChanged" />
+        </div>
+        <select class="filter-select" @bind="propertyFilter" @bind:after="LoadDocuments">
+            <option value="">All Properties</option>
+            @foreach (var po in propertyOptions)
+            {
+                <option value="@po.PropertyId">@po.Title</option>
+            }
+        </select>
+        <span class="result-count">@documents.Count document@(documents.Count == 1 ? "" : "s") found</span>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+        @if (isLoading)
+        {
+            <div class="loading"><span class="spinner"></span> Loading documents...</div>
+        }
+        else if (documents.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="em-icon">&#x1F4C1;</div>
+                <h3>No documents found</h3>
+                <p>@(string.IsNullOrEmpty(searchQuery) && string.IsNullOrEmpty(propertyFilter)
+                    ? "Upload your first property document to keep records safe."
+                    : "Try adjusting your search or filter.")</p>
+                @if (string.IsNullOrEmpty(searchQuery) && string.IsNullOrEmpty(propertyFilter))
+                {
+                    <button class="btn-primary" @onclick="OpenUploadModal">&#x2B; Upload Document</button>
+                }
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Type</th>
+                        <th>Property</th>
+                        <th>Status</th>
+                        <th>Uploaded On</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in documents)
+                    {
+                        <tr class="@(d.Status == "Rejected" ? "row-rejected" : "")">
+                            <td>
+                                <div class="doc-title">@d.FileName</div>
+                                @if (d.Status == "Rejected" && !string.IsNullOrEmpty(d.AdminNotes))
+                                {
+                                    <div class="doc-reject-reason">&#x26A0; @d.AdminNotes</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="file-badge @FileBadgeClass(d.FileType)">
+                                    &#x1F4C4; @d.FileType
+                                </span>
+                            </td>
+                            <td>
+                                <div class="doc-title">@d.PropertyTitle</div>
+                                @if (!string.IsNullOrEmpty(d.Location))
+                                {
+                                    <div class="doc-meta">&#x1F4CD; @d.Location</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="doc-status-badge doc-status-@d.Status.ToLower()">@d.Status</span>
+                            </td>
+                            <td>@d.UploadedAt.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <div class="row-actions">
+                                    <a class="icon-btn" title="Download" href="@d.FilePath" target="_blank">&#x2193;</a>
+                                    @if (CurrentUser.CanModifyRecords)
+                                    {
+                                        <button class="icon-btn danger" title="Delete"
+                                                @onclick="() => OpenDeleteConfirm(d.DocumentId, d.FileName)">&#x1F5D1;</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</main>
+
+<!-- UPLOAD MODAL -->
+@if (showUploadModal)
+{
+    <div class="doc-modal-overlay" @onclick="CloseUploadModal">
+        <div class="doc-modal" @onclick:stopPropagation="true">
+            <div class="doc-modal-header">
+                <h3>Upload Document</h3>
+                <button class="doc-modal-close" @onclick="CloseUploadModal">&#x2715;</button>
+            </div>
+            <div class="doc-modal-body">
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert-error" style="margin-bottom:1rem;">&#x26A0; @formError</div>
+                }
+                <div class="form-group">
+                    <label class="form-label">Property *</label>
+                    <select class="form-input" @bind="formPropertyId">
+                        <option value="0">Select property</option>
+                        @foreach (var po in propertyOptions)
+                        {
+                            <option value="@po.PropertyId">@po.Title @(string.IsNullOrEmpty(po.Location) ? "" : " — " + po.Location)</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">File *</label>
+                    <label class="upload-zone" for="docFileInput" style="cursor:pointer;display:block;">
+                        <div class="uz-icon">&#x1F4C2;</div>
+                        <p>Click to select a file</p>
+                        <small>PDF, Images, Word files — max 10 MB</small>
+                    </label>
+                    <InputFile id="docFileInput" OnChange="OnFileSelected" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" />
+                    @if (selectedFile != null)
+                    {
+                        <div class="selected-file">
+                            &#x2705; @selectedFile.Name (@FormatFileSize(selectedFile.Size))
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="doc-modal-footer">
+                <button class="btn-secondary" @onclick="CloseUploadModal">Cancel</button>
+                <button class="btn-save" @onclick="UploadDocument" disabled="@isSaving">
+                    @(isSaving ? "Uploading..." : "Upload")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- DELETE CONFIRM MODAL -->
+@if (showDeleteModal)
+{
+    <div class="doc-modal-overlay" @onclick="CloseDeleteModal">
+        <div class="doc-modal" style="max-width:420px;" @onclick:stopPropagation="true">
+            <div class="doc-modal-header">
+                <h3>Delete Document</h3>
+                <button class="doc-modal-close" @onclick="CloseDeleteModal">&#x2715;</button>
+            </div>
+            <div class="doc-modal-body">
+                <div class="confirm-icon">&#x1F5D1;</div>
+                <p class="confirm-msg">Are you sure you want to delete<br><strong>"@deletingName"</strong>?<br><br>This action cannot be undone.</p>
+            </div>
+            <div class="doc-modal-footer">
+                <button class="btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                <button class="btn-danger" @onclick="ConfirmDelete" disabled="@isSaving">
+                    @(isSaving ? "Deleting..." : "Delete Document")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<inheritance_system.Services.DocumentListItem> documents = new();
+    private List<inheritance_system.Services.PropertyOption> propertyOptions = new();
+    private bool isLoading = true;
+    private string searchQuery = "";
+    private string propertyFilter = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    private int statTotal = 0;
+    private int statProperties = 0;
+
+    private bool showUploadModal = false;
+    private bool isSaving = false;
+    private int formPropertyId = 0;
+    private IBrowserFile? selectedFile = null;
+    private string formError = "";
+
+    private bool showDeleteModal = false;
+    private int deletingId = 0;
+    private string deletingName = "";
+    private UserComplianceReport? _compliance;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        propertyOptions = await HeirSvc.GetPropertyOptionsAsync(CurrentUser.UserId);
+        _compliance = await ComplianceSvc.GetUserComplianceAsync(CurrentUser.UserId);
+        await LoadDocuments();
+        await LoadStats();
+    }
+
+    private async Task LoadDocuments()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            documents = await DocumentSvc.GetDocumentsAsync(CurrentUser.UserId, searchQuery, propertyFilter);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not load documents.";
+            Console.WriteLine($"DOCUMENTS ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        var (total, properties) = await DocumentSvc.GetStatsAsync(CurrentUser.UserId);
+        statTotal = total;
+        statProperties = properties;
+        StateHasChanged();
+    }
+
+    private System.Threading.CancellationTokenSource? _searchCts;
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        try
+        {
+            await Task.Delay(350, _searchCts.Token);
+            await LoadDocuments();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void OpenUploadModal()
+    {
+        if (propertyOptions.Count == 0)
+        {
+            errorMessage = "Please register at least one property before uploading documents.";
+            return;
+        }
+        formPropertyId = propertyOptions[0].PropertyId;
+        selectedFile = null;
+        formError = "";
+        showUploadModal = true;
+    }
+
+    private void CloseUploadModal() { showUploadModal = false; }
+    private void OnFileSelected(InputFileChangeEventArgs e) { selectedFile = e.File; }
+
+    private async Task UploadDocument()
+    {
+        formError = "";
+        if (formPropertyId == 0) { formError = "Please select a property."; return; }
+        if (selectedFile == null) { formError = "Please select a file."; return; }
+
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            var (ok, msg) = await DocumentSvc.UploadAsync(CurrentUser.UserId, formPropertyId, selectedFile);
+            if (ok)
+            {
+                successMessage = msg;
+                showUploadModal = false;
+                await LoadDocuments();
+                await LoadStats();
+            }
+            else formError = msg;
+        }
+        catch (Exception ex)
+        {
+            formError = "Upload failed. Please try again.";
+            Console.WriteLine($"UPLOAD ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    private void OpenDeleteConfirm(int id, string name) { deletingId = id; deletingName = name; showDeleteModal = true; }
+    private void CloseDeleteModal() { showDeleteModal = false; }
+
+    private async Task ConfirmDelete()
+    {
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            var (ok, msg) = await DocumentSvc.DeleteAsync(deletingId, CurrentUser.UserId);
+            if (ok) { successMessage = msg; } else { errorMessage = msg; }
+            showDeleteModal = false;
+            await LoadDocuments();
+            await LoadStats();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Delete failed. Please try again.";
+            Console.WriteLine($"DELETE DOCUMENT ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string FileBadgeClass(string type) => type?.ToUpper() switch
+    {
+        "PDF"  => "file-pdf",
+        "JPG"  => "file-img",
+        "JPEG" => "file-img",
+        "PNG"  => "file-img",
+        "DOC"  => "file-word",
+        "DOCX" => "file-word",
+        _      => "file-other"
+    };
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024} KB";
+        return $"{bytes / (1024 * 1024)} MB";
+    }
+}

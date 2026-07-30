@@ -1,0 +1,86 @@
+﻿@inject NavigationManager Nav
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject CurrentUserService CurrentUser
+
+
+<title>Admin - MirasPro</title>
+
+@{
+    var path = Nav.Uri.ToLower();
+    var initials = string.IsNullOrEmpty(CurrentUser.FullName) ? "A"
+        : string.Join("", CurrentUser.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(n => n[0].ToString().ToUpper()));
+}
+
+<aside class="admin-sidebar">
+    <div class="sb-logo">
+        <div class="sb-logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width:18px;height:18px">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+        </div>
+        <div class="sb-logo-text">
+            <div class="sb-logo-title">MirasPro</div>
+            <div class="sb-logo-sub">Admin Console</div>
+        </div>
+    </div>
+
+    <div class="sb-body">
+        <div class="sb-section">Overview</div>
+        <a href="/admin/console" class="sb-item @(path.Contains("/admin/console") ? "active" : "")">
+            <span>📊</span> Dashboard
+        </a>
+        <a href="/admin/users" class="sb-item @(path.Contains("/admin/users") ? "active" : "")">
+            <span>👥</span> All Users
+        </a>
+        <a href="/admin/properties" class="sb-item @(path.Contains("/admin/properties") ? "active" : "")">
+            <span>🏠</span> All Properties
+        </a>
+        <a href="/admin/documents" class="sb-item @(path.Contains("/admin/documents") ? "active" : "")">
+            <span>📄</span> All Documents
+        </a>
+        <a href="/admin/compliance" class="sb-item @(path.Contains("/admin/compliance") ? "active" : "")">
+            <span>⚠</span> User Compliance
+        </a>
+
+        <div class="sb-section">Applications</div>
+        <a href="/admin/disputes" class="sb-item @(path.Contains("/admin/disputes") ? "active" : "")">
+            <span>⚖</span> Disputes &amp; Cases
+        </a>
+
+        <div class="sb-section">Security</div>
+        <a href="/admin/security" class="sb-item @(path.Contains("/admin/security") ? "active" : "")">
+            <span>🔐</span> Security Key
+        </a>
+
+        <div class="sb-section">FRC (Users)</div>
+        <a href="/admin/frc-queue" class="sb-item @(path.Contains("/admin/frc") && !path.Contains("filter=approved") ? "active" : "")">
+            <span>📋</span> FRC Review Queue
+        </a>
+        <a href="/admin/frc-queue?filter=Approved" class="sb-item" @onclick='() => Nav.NavigateTo("/admin/frc-queue?filter=Approved", forceLoad: true)' @onclick:preventDefault>
+            <span>✓</span> Approved FRC
+        </a>
+        <a href="/admin/frc-queue?filter=Rejected" class="sb-item" @onclick='() => Nav.NavigateTo("/admin/frc-queue?filter=Rejected", forceLoad: true)' @onclick:preventDefault>
+            <span>✕</span> Rejected FRC
+        </a>
+    </div>
+
+    <div class="sb-footer">
+        <div class="sb-user">
+            <div class="sb-avatar">@initials</div>
+            <div>
+                <div class="sb-user-name">@CurrentUser.FullName</div>
+                <div class="sb-user-role">Administrator</div>
+            </div>
+        </div>
+        <button class="sb-logout" @onclick="Logout">Logout</button>
+    </div>
+</aside>
+
+@code {
+    async Task Logout()
+    {
+        await CurrentUser.LogoutAsync();
+        Nav.NavigateTo("/login/admin", forceLoad: true);
+    }
+}

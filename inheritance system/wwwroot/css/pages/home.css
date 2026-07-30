@@ -1,0 +1,1046 @@
+/* ============================================================
+   FILE: home.css
+   PURPOSE: Public landing page — shown to unauthenticated visitors.
+            Sections: Navbar · Hero (with bg image) · Divider ·
+            Intro two-col · Features grid · How It Works steps ·
+            Who It's For · Faraid highlight · CTA · Footer.
+   DEPENDS ON: miras-theme.css (variables, resets, keyframes)
+   ============================================================ */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 1 — PAGE WRAPPER
+   ────────────────────────────────────────────────────────── */
+.landing-page {
+    font-family: 'Source Sans 3', Inter, system-ui, sans-serif;
+    background: var(--surface-muted);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+    .landing-page * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 2 — STICKY TOP NAVBAR
+   Dark glassmorphism style matching the bg image tones.
+   ────────────────────────────────────────────────────────── */
+    .landing-page nav.landing-nav {
+        background: rgba(5, 15, 40, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 3rem;
+        height: 64px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .landing-page .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+    }
+
+    .landing-page .nav-logo-box {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #1a4fd6 0%, #006aff 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        font-weight: 700;
+        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 2px 12px rgba(0, 106, 255, 0.4);
+    }
+
+    .landing-page .nav-brand:hover .nav-logo-box {
+        transform: scale(1.08);
+    }
+
+    .landing-page .nav-brand-name {
+        font-size: 20px;
+        font-weight: 700;
+        color: #f0e6c8;
+        letter-spacing: -0.02em;
+    }
+
+        .landing-page .nav-brand-name span {
+            background: linear-gradient(135deg, #f0a93a 0%, #f7cc6b 60%, #e8903a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+    .landing-page .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+    }
+
+        .landing-page .nav-links a {
+            color: rgba(255, 255, 255, 0.82);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+            .landing-page .nav-links a:hover {
+                color: #f7cc6b;
+            }
+
+    .landing-page .nav-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* "Login" — outline button on dark nav */
+    .landing-page .btn-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        color: rgba(255, 255, 255, 0.9);
+        background: transparent;
+        padding: 7px 20px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        text-decoration: none;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+        .landing-page .btn-ghost:hover {
+            border-color: #f7cc6b;
+            color: #f7cc6b;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+    /* "Register" — dashboard blue gradient button */
+    .landing-page .btn-solid {
+        background: linear-gradient(135deg, #1a4fd6 0%, #006aff 60%, #0057e8 100%);
+        color: #fff;
+        border: none;
+        padding: 7px 20px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        text-decoration: none;
+        transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 12px rgba(0, 106, 255, 0.45);
+    }
+
+        .landing-page .btn-solid:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 106, 255, 0.55);
+        }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 3 — HERO SECTION
+   BG: homeBg.png with a dark scrim overlay for text contrast.
+   Blue gradient completely removed.
+   ────────────────────────────────────────────────────────── */
+    .landing-page .hero {
+        background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,20,60,0.58) 100%), url('/images/homeBg.png') center / cover no-repeat;
+        position: relative;
+        padding: 7rem 3rem 5.5rem;
+        text-align: center;
+        overflow: hidden;
+        min-height: 520px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+        .landing-page .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 20% 50%, rgba(46,125,82,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(76,175,125,0.05) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+    /* ── Hero ornament — thin gold lines flanking a diamond ── */
+    .landing-page .hero-ornament {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .landing-page .ornament-line {
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(to right, transparent, var(--gold));
+    }
+
+        .landing-page .ornament-line.right {
+            background: linear-gradient(to left, transparent, var(--gold));
+        }
+
+    .landing-page .ornament-diamond {
+        width: 6px;
+        height: 6px;
+        background: var(--gold);
+        transform: rotate(45deg);
+    }
+
+    /* ── Gold pill badge ── */
+    .landing-page .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(201,168,76,0.15);
+        border: 1px solid rgba(201,168,76,0.4);
+        color: var(--gold);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 16px;
+        border-radius: 20px;
+        margin-bottom: 1.75rem;
+        letter-spacing: 0.5px;
+        animation: fadeInUp 0.5s var(--ease-out) both;
+        position: relative;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    /* ── Main headline ── */
+    .landing-page .hero h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 52px;
+        font-weight: 700;
+        color: #ffffff;
+        line-height: 1.2;
+        margin-bottom: 1.25rem;
+        position: relative;
+        text-shadow: 0 2px 16px rgba(0,0,0,0.45);
+        animation: fadeInUp 0.55s var(--ease-out) 0.07s both;
+    }
+
+        .landing-page .hero h1 span {
+            color: var(--gold);
+            font-style: italic;
+        }
+
+    /* ── Subtitle paragraph ── */
+    .landing-page .hero-subtitle {
+        font-size: 17px;
+        color: rgba(255,255,255,0.88);
+        max-width: 560px;
+        margin: 0 auto 2.5rem;
+        line-height: 1.8;
+        font-weight: 300;
+        text-shadow: 0 1px 8px rgba(0,0,0,0.5);
+        position: relative;
+        animation: fadeInUp 0.55s var(--ease-out) 0.14s both;
+    }
+
+    /* ── CTA button row ── */
+    .landing-page .hero-cta {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-bottom: 4rem;
+        position: relative;
+        animation: fadeInUp 0.55s var(--ease-out) 0.20s both;
+    }
+
+    /* White filled button — primary CTA */
+    .landing-page .btn-hero-primary {
+        background: #fff;
+        color: var(--brand-primary);
+        border: none;
+        padding: 13px 32px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        text-decoration: none;
+        letter-spacing: 0.3px;
+        transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+        .landing-page .btn-hero-primary:hover {
+            background: #e8f0ff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        }
+
+    /* Transparent outline button — secondary CTA */
+    .landing-page .btn-hero-outline {
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.45);
+        padding: 13px 32px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 400;
+        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        text-decoration: none;
+        transition: background 0.2s, border-color 0.2s;
+        backdrop-filter: blur(4px);
+    }
+
+        .landing-page .btn-hero-outline:hover {
+            background: rgba(255,255,255,0.22);
+            border-color: rgba(255,255,255,0.7);
+        }
+
+    /* ── Stats bar inside the hero ── */
+    .landing-page .hero-stats {
+        display: flex;
+        justify-content: center;
+        gap: 0;
+        border-top: 1px solid rgba(255,255,255,0.18);
+        padding-top: 2.5rem;
+        position: relative;
+    }
+
+    .landing-page .stat-item {
+        flex: 1;
+        max-width: 180px;
+        text-align: center;
+        padding: 0 1.5rem;
+        border-right: 1px solid rgba(255,255,255,0.18);
+    }
+
+        .landing-page .stat-item:last-child {
+            border-right: none;
+        }
+
+    .landing-page .stat-number {
+        font-family: 'Playfair Display', serif;
+        font-size: 32px;
+        color: #fff;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 4px;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .landing-page .stat-label {
+        font-size: 12px;
+        color: rgba(255,255,255,0.75);
+        letter-spacing: 0.5px;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 4 — DIVIDER STRIP
+   ────────────────────────────────────────────────────────── */
+    .landing-page .divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 2.5rem 3rem;
+        background: var(--green-light);
+        border-top: 1px solid var(--green-border);
+        border-bottom: 1px solid var(--green-border);
+    }
+
+    .landing-page .divider-line {
+        flex: 1;
+        max-width: 120px;
+        height: 1px;
+        background: var(--green-border);
+    }
+
+    .landing-page .divider-text {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-soft);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 5 — GENERIC CONTENT SECTION
+   ────────────────────────────────────────────────────────── */
+    .landing-page .section {
+        padding: 5rem 3rem;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-page .section-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--green-mid);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 0.75rem;
+    }
+
+    .landing-page .section-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 1rem;
+        line-height: 1.3;
+    }
+
+    .landing-page .section-body {
+        font-size: 16px;
+        color: var(--text-muted);
+        line-height: 1.9;
+        max-width: 680px;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 6 — TWO-COLUMN INTRO GRID
+   ────────────────────────────────────────────────────────── */
+    .landing-page .intro-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+        padding: 5rem 3rem;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-page .intro-visual {
+        background: linear-gradient(145deg, #2a2a33 0%, #1a3a6b 55%, #006aff 100%);
+        border-radius: 16px;
+        padding: 2.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-lg);
+        transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
+    }
+
+        .landing-page .intro-visual:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 28px 60px rgba(0,106,255,0.22);
+        }
+
+        .landing-page .intro-visual::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: rgba(76,175,125,0.08);
+        }
+
+    .landing-page .visual-card {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(76,175,125,0.2);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.2s;
+    }
+
+        .landing-page .visual-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .landing-page .visual-card:hover {
+            background: rgba(255,255,255,0.10);
+        }
+
+    .landing-page .visual-icon {
+        width: 36px;
+        height: 36px;
+        background: rgba(76,175,125,0.15);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .landing-page .visual-card-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #c8e6d4;
+    }
+
+    .landing-page .visual-card-sub {
+        font-size: 12px;
+        color: #5a8a6e;
+        margin-top: 2px;
+    }
+
+    .landing-page .visual-badge {
+        margin-left: auto;
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .landing-page .badge-active {
+        background: rgba(0,106,255,0.2);
+        color: #66b3ff;
+    }
+
+    .landing-page .badge-pending {
+        background: rgba(201,168,76,0.2);
+        color: var(--gold);
+    }
+
+    .landing-page .badge-resolved {
+        background: rgba(46,125,82,0.2);
+        color: #7aaa8e;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 7 — FEATURES GRID (dark background)
+   ────────────────────────────────────────────────────────── */
+    .landing-page .features-section {
+        background: linear-gradient(180deg, #2a2a33 0%, #1e1e28 100%);
+        padding: 5rem 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .landing-page .features-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 70% 30%, rgba(0,106,255,0.18) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+    .landing-page .features-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-page .features-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+        .landing-page .features-header .section-label {
+            color: #66b3ff;
+        }
+
+        .landing-page .features-header .section-title {
+            color: #fff;
+        }
+
+    .landing-page .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    .landing-page .feature-card {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 1.75rem;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        will-change: transform;
+    }
+
+        .landing-page .feature-card:hover {
+            border-color: rgba(0,106,255,0.5);
+            background: rgba(0,106,255,0.1);
+            transform: translateY(-6px);
+            box-shadow: 0 12px 32px rgba(0,106,255,0.2);
+        }
+
+    .landing-page .feature-icon {
+        width: 44px;
+        height: 44px;
+        background: rgba(255,255,255,0.10);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 1rem;
+    }
+
+    .landing-page .feature-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+
+    .landing-page .feature-desc {
+        font-size: 13px;
+        color: rgba(255,255,255,0.65);
+        line-height: 1.7;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 8 — HOW IT WORKS (4-step process)
+   ────────────────────────────────────────────────────────── */
+    .landing-page .steps-section {
+        padding: 5rem 3rem;
+        background: var(--green-light);
+        border-top: 1px solid var(--green-border);
+        border-bottom: 1px solid var(--green-border);
+    }
+
+    .landing-page .steps-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-page .steps-header {
+        text-align: center;
+        margin-bottom: 3.5rem;
+    }
+
+    .landing-page .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    .landing-page .step-card {
+        text-align: center;
+        padding: 0 1rem;
+    }
+
+    .landing-page .step-number {
+        width: 52px;
+        height: 52px;
+        background: var(--green-dark);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-family: 'Playfair Display', serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--green-accent);
+        border: 2px solid var(--green-border);
+        transition: transform 0.25s var(--ease-out), box-shadow 0.25s;
+    }
+
+    .landing-page .step-card:hover .step-number {
+        transform: scale(1.1);
+        box-shadow: 0 6px 18px rgba(0,106,255,0.2);
+    }
+
+    .landing-page .step-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+    }
+
+    .landing-page .step-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.7;
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
+   SECTION 9 — WHO IS IT FOR (audience cards)
+   ────────────────────────────────────────────────────────── */
+    .landing-page .audience-section {
+        padding: 5rem 3rem;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-page .audience-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 2.5rem;
+    }
+
+    .landing-page .audience-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem 1.5rem;
+        border-top: 3px solid var(--brand-primary);
+        transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
+        animation: fadeInUp 0.5s var(--ease-out) both;
+    }
+
+        .landing-page .audience-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+    .landing-page .audience-icon {
+        font-size: 28px;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .landing-page .audience-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 18px;
+        color: var(--text-dark);
+        margin-bottom: 10px;
+    }
+
+    .landing-page .audience-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.8;
+    }
+
+
+   /* ──────────────────────────────────────────────────────────
+   SECTION 10 — FARAID HIGHLIGHT SECTION
+   ────────────────────────────────────────────────────────── */
+
+.landing-page .faraid-section {
+    position: relative;
+    padding: 5rem 3rem;
+    overflow: hidden;
+
+    background:
+        linear-gradient(
+            rgba(0, 0, 0, 0.65),
+            rgba(0, 0, 0, 0.65)
+        ),
+        url('/images/faraidBg.jpg');
+
+    background-size: cover;
+    background-position: center 45%;
+    background-repeat: no-repeat;
+}
+
+.landing-page .faraid-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.landing-page .faraid-badge {
+    display: inline-block;
+    background: rgba(201, 168, 76, 0.18);
+    border: 1px solid rgba(201, 168, 76, 0.45);
+    color: #f7cc6b;
+    font-size: 12px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(6px);
+}
+
+.landing-page .faraid-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 52px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 1.25rem;
+    line-height: 1.25;
+    text-shadow: 0 3px 15px rgba(0, 0, 0, 0.85);
+}
+
+.landing-page .faraid-desc {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.9;
+    margin-bottom: 3rem;
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.landing-page .faraid-shares {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.landing-page .share-pill {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+
+    padding: 14px 24px;
+    min-width: 120px;
+
+    transition: all 0.3s ease;
+}
+
+.landing-page .share-pill:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(247, 204, 107, 0.6);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.landing-page .share-relation {
+    font-size: 13px;
+    color: #f7cc6b;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.landing-page .share-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .landing-page .faraid-section {
+        padding: 4rem 1.5rem;
+        background-position: center center;
+    }
+
+    .landing-page .faraid-title {
+        font-size: 34px;
+    }
+
+    .landing-page .faraid-desc {
+        font-size: 16px;
+    }
+
+    .landing-page .share-pill {
+        min-width: 100px;
+        padding: 12px 18px;
+    }
+}
+    /* ──────────────────────────────────────────────────────────
+   SECTION 11 — CALL TO ACTION SECTION
+   ────────────────────────────────────────────────────────── */
+    .landing-page .cta-section {
+        padding: 5rem 3rem;
+        text-align: center;
+        background: var(--green-light);
+        border-top: 1px solid var(--green-border);
+    }
+
+    .landing-page .cta-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 38px;
+        color: var(--text-dark);
+        margin-bottom: 1rem;
+    }
+
+    .landing-page .cta-sub {
+        font-size: 16px;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 12 — FOOTER
+   ────────────────────────────────────────────────────────── */
+footer {
+    background: #2a2a33;
+    padding: 0;
+    border-top: 1px solid rgba(0,106,255,0.2);
+}
+
+.landing-page .footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+    padding: 4rem 4rem 2rem;
+}
+
+.landing-page .footer-brand p {
+    font-size: 13px;
+    color: #a7a6ab;
+    line-height: 1.8;
+    margin-top: 1rem;
+    max-width: 260px;
+}
+
+.landing-page .footer-col h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d1d1d5;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.landing-page .footer-col ul {
+    list-style: none;
+}
+
+    .landing-page .footer-col ul li {
+        margin-bottom: 8px;
+    }
+
+        .landing-page .footer-col ul li a {
+            font-size: 13px;
+            color: #a7a6ab;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+            .landing-page .footer-col ul li a:hover {
+                color: var(--brand-primary);
+            }
+
+.landing-page .footer-bottom {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem 4rem 2.5rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+    .landing-page .footer-bottom p {
+        font-size: 12px;
+        color: #7a7a87;
+    }
+
+.landing-page .footer-law {
+    font-size: 12px;
+    color: #7a7a87;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 13 — RESPONSIVE BREAKPOINTS
+   ────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .landing-page nav.landing-nav {
+        padding: 0 1rem;
+    }
+
+    .landing-page .nav-links {
+        display: none;
+    }
+
+    .landing-page .hero {
+        padding: 4rem 1.5rem 3rem;
+        min-height: auto;
+    }
+
+        .landing-page .hero h1 {
+            font-size: 32px;
+        }
+
+    .landing-page .hero-subtitle {
+        font-size: 15px;
+    }
+
+    .landing-page .hero-cta {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .landing-page .intro-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding: 3rem 1.5rem;
+    }
+
+    .landing-page .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .steps-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .landing-page .audience-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .footer-inner {
+        grid-template-columns: 1.6fr 1fr 1fr 1fr;
+        gap: 2rem;
+        padding: 3rem 1.5rem 1.5rem;
+    }
+
+    .landing-page .footer-bottom {
+        padding: 1.5rem 1.5rem 2rem;
+    }
+
+    .landing-page .footer-brand p {
+        max-width: 220px;
+    }
+
+    .landing-page .footer-col {
+        padding-top: 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .landing-page .steps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .hero-stats {
+        flex-wrap: wrap;
+    }
+
+    .landing-page .stat-item {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.18);
+        padding: 0.75rem 0;
+        min-width: 100px;
+    }
+
+    .landing-page .footer-inner {
+        grid-template-columns: 1fr;
+        padding: 2.5rem 1.25rem 1.25rem;
+    }
+
+    .landing-page .footer-bottom {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+        padding: 1.25rem 1.25rem 2rem;
+    }
+}

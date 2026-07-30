@@ -1,0 +1,92 @@
+@page "/login/user"
+@layout EmptyLayout
+@inject UserService UserService
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Title>User Sign In — MirasPro</Title>
+
+<div class="auth-portal" style="min-height:100vh;">
+    <nav class="auth-portal-nav">
+        <a href="/" style="color:#fff;text-decoration:none;font-family:'Playfair Display',serif;">MirasPro</a>
+        <a href="/login" style="color:rgba(255,255,255,0.75);font-size:0.875rem;">← Back to login options</a>
+    </nav>
+
+    <main class="auth-portal-main">
+        <div style="background:#fff;border-radius:14px;padding:2.5rem;max-width:420px;width:100%;box-shadow:var(--shadow-lg);animation:slideUp 0.4s ease-out;">
+            <h2 style="font-family:'Playfair Display',serif;margin:0 0 0.35rem;">User Sign In</h2>
+            <p style="color:var(--text-secondary);font-size:0.9rem;margin:0 0 1.5rem;">Citizens — manage properties, heirs &amp; applications</p>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:0.875rem;margin-bottom:1rem;">@errorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div style="background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:8px;font-size:0.875rem;margin-bottom:1rem;">@successMessage</div>
+            }
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" type="email" @bind="email" placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input class="form-input" type="password" @bind="password" placeholder="Your password" />
+            </div>
+
+            <button class="btn-brand" style="width:100%;margin-top:0.5rem;" @onclick="HandleLogin" disabled="@isLoading">
+                @(isLoading ? "Signing in..." : "Sign In →")
+            </button>
+
+            <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:var(--text-secondary);">
+                No account? <a href="/register">Register as user</a>
+            </p>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private bool isLoading;
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    private async Task HandleLogin()
+    {
+        errorMessage = "";
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please enter email and password.";
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var result = await UserService.LoginAsync(email, password, AppConstants.RoleUser);
+            if (result.Success && result.User != null)
+            {
+                await CurrentUser.SetUserAsync(result.User.UserId, result.User.FullName, result.User.Email, result.User.Role);
+                Navigation.NavigateTo("/Dashboard", forceLoad: true);
+            }
+            else
+                errorMessage = result.Message;
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            errorMessage = detail.Contains("network", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("connection", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("login failed", StringComparison.OrdinalIgnoreCase)
+                ? $"Database connection failed. Check SQL Server is running and appsettings.json points to InheritanceDB. ({detail})"
+                : $"Sign-in failed: {detail}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

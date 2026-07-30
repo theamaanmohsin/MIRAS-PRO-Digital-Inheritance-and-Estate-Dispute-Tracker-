@@ -1,0 +1,302 @@
+@page "/Dashboard"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.DashboardService DashboardSvc
+@inject inheritance_system.Services.ComplianceService ComplianceSvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a class="active" href="/dashboard">Dashboard</a></li>
+        <li><a href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<section class="greet">
+    <div class="greet-inner">
+        <span class="greet-badge">&#x2696; @DateTime.Now.ToString("dddd, MMMM d, yyyy")</span>
+        <h1>@Greeting(), <span>@FirstName()</span></h1>
+        <p>Here's an overview of your properties, heirs, and inheritance cases. Everything is securely stored and Sharia-compliant.</p>
+    </div>
+</section>
+
+<main class="dash-main">
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    @if (_compliance != null && _compliance.Missing.Any())
+    {
+        <div class="compliance-banner">
+            <h3>Action required — complete your profile</h3>
+            <ul>
+                @foreach (var item in _compliance.Missing)
+                {
+                    <li class="@item.Severity">@item.Message</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="loading"><span class="spinner"></span> Loading your dashboard...</div>
+    }
+    else
+    {
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon-wrap">&#x1F3E0;</div>
+                <div class="stat-label">Properties</div>
+                <div class="stat-value">@stats.TotalProperties</div>
+                <div class="stat-sub">Registered under your name</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap">&#x1F46A;</div>
+                <div class="stat-label">Heirs</div>
+                <div class="stat-value">@stats.TotalHeirs</div>
+                <div class="stat-sub">Across all properties</div>
+            </div>
+            <div class="stat-card gold">
+                <div class="stat-icon-wrap">&#x1F4CB;</div>
+                <div class="stat-label">Active Cases</div>
+                <div class="stat-value">@stats.ActiveCases</div>
+                <div class="stat-sub">Inheritance cases open</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-icon-wrap">&#x2696;</div>
+                <div class="stat-label">Open Disputes</div>
+                <div class="stat-value">@stats.OpenDisputes</div>
+                <div class="stat-sub">Pending or under review</div>
+            </div>
+        </div>
+
+        <div class="total-strip">
+            <div>
+                <div class="label">Total Estimated Portfolio Value</div>
+                <div class="amount">PKR @FormatPkr(stats.TotalEstimatedValue)</div>
+                <div class="sub">@stats.PendingTransfers pending transfer(s) &middot; @stats.DocumentsUploaded document(s) on file</div>
+            </div>
+            <div class="ornament">&#x25C7; &#x2015;&#x2015;&#x2015; &#x25C6; &#x2015;&#x2015;&#x2015; &#x25C7;</div>
+        </div>
+
+        <div class="row-title">
+            <h2>Quick actions</h2>
+            <p>Frequently used</p>
+        </div>
+        <div class="actions-grid">
+            <a href="/Properties" class="action-card">
+                <div class="action-icon">&#x1F3E0;</div>
+                <div class="action-title">Register Property</div>
+                <div class="action-desc">Add a new residential, commercial, or agricultural property.</div>
+            </a>
+            <a href="/heirs" class="action-card">
+                <div class="action-icon">&#x1F464;</div>
+                <div class="action-title">Add Heir</div>
+                <div class="action-desc">Assign a legal heir to one of your properties.</div>
+            </a>
+            <a href="/faraid" class="action-card">
+                <div class="action-icon">&#x2696;</div>
+                <div class="action-title">Faraid Calculator</div>
+                <div class="action-desc">Compute Sharia-compliant inheritance shares.</div>
+            </a>
+            <a href="/disputes" class="action-card">
+                <div class="action-icon">&#x1F4DC;</div>
+                <div class="action-title">File Dispute</div>
+                <div class="action-desc">Raise a land or inheritance dispute for review.</div>
+            </a>
+        </div>
+
+        <div class="row-title">
+            <h2>Recent properties</h2>
+            <p><a href="properties" style="color: var(--green-mid); text-decoration: none; font-weight: 500;">View all &rarr;</a></p>
+        </div>
+        <div class="table-card">
+            @if (recentProperties.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="em-icon">&#x1F3DB;</div>
+                    <h3>No properties yet</h3>
+                    <p>Register your first property to start managing your inheritance digitally.</p>
+                    <a href="/properties" class="btn-primary">Register Property &rarr;</a>
+                </div>
+            }
+            else
+            {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Type</th>
+                            <th>Heirs</th>
+                            <th>Estimated Value</th>
+                            <th>Status</th>
+                            <th>Registered</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in recentProperties)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="prop-title">@p.Title</div>
+                                    <div class="prop-meta">&#x1F4CD; @(string.IsNullOrEmpty(p.Location) ? "&mdash;" : p.Location)</div>
+                                </td>
+                                <td><span class="pill @TypePillClass(p.PropertyType)">@(string.IsNullOrEmpty(p.PropertyType) ? "&mdash;" : p.PropertyType)</span></td>
+                                <td>@p.HeirCount</td>
+                                <td>PKR @FormatPkr(p.EstimatedValue)</td>
+                                <td><span class="pill @StatusPillClass(p.Status)">@p.Status</span></td>
+                                <td>@p.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button class="icon-btn" title="View" @onclick="() => ViewProperty(p.PropertyId)">&#x1F441;</button>
+                                        @if (CurrentUser.CanModifyRecords)
+                                        {
+                                            <button class="icon-btn" title="Edit" @onclick="() => EditProperty(p.PropertyId)">&#x270E;</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</main>
+
+
+@code {
+    private DashboardStats stats = new();
+    private List<RecentProperty> recentProperties = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private UserComplianceReport? _compliance;
+
+    private async Task LoadDashboardAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            StateHasChanged();
+
+            stats = await DashboardSvc.GetStatsAsync(CurrentUser.UserId);
+            recentProperties = await DashboardSvc.GetRecentPropertiesAsync(CurrentUser.UserId, 5);
+            _compliance = await ComplianceSvc.GetUserComplianceAsync(CurrentUser.UserId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not load your dashboard. Please ensure SQL Server is running.";
+            Console.WriteLine($"DASHBOARD ERROR: {ex.Message}");
+            Console.WriteLine($"INNER: {ex.InnerException?.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    private void ViewProperty(int id) => Navigation.NavigateTo($"/properties/{id}");
+    private void EditProperty(int id) => Navigation.NavigateTo($"/properties/{id}");
+
+    // helpers
+    private string FirstName() =>
+        string.IsNullOrWhiteSpace(CurrentUser.FullName) ? "there" : CurrentUser.FullName.Split(' ')[0];
+
+    private string Greeting()
+    {
+        var h = DateTime.Now.Hour;
+        return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string FormatPkr(decimal v)
+    {
+        if (v >= 10_000_000m) return $"{v / 10_000_000m:0.##} Crore";
+        if (v >= 100_000m) return $"{v / 100_000m:0.##} Lakh";
+        return v.ToString("N0");
+    }
+
+    private string TypePillClass(string t) => t?.ToLower() switch
+    {
+        "residential" => "pill-residential",
+        "commercial" => "pill-commercial",
+        "digital" => "pill-digital",
+        "agricultural" => "pill-agricultural",
+        _ => "pill-active"
+    };
+
+    private string StatusPillClass(string s) => s?.ToLower() switch
+    {
+        "active" => "pill-active",
+        "pending" => "pill-pending",
+        "under review" => "pill-pending",
+        "closed" => "pill-closed",
+        "resolved" => "pill-active",
+        _ => "pill-active"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        if (CurrentUser.IsAdmin)
+        {
+            Navigation.NavigateTo("/admin/console", forceLoad: true);
+            return;
+        }
+
+        await LoadDashboardAsync();
+    }
+}

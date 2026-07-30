@@ -1,0 +1,293 @@
+@page "/register"
+@layout EmptyLayout
+@inject inheritance_system.Services.UserService UserService
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<title>Register - MirasPro</title>
+
+<HeadContent>
+     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<nav class="reg-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">م</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <span class="nav-login-link">
+        Already have an account? <a href="/login">Sign In</a>
+    </span>
+</nav>
+
+<div class="reg-page">
+    <div class="reg-left">
+        <div class="left-badge">🏛 Join MirasPro Today</div>
+        <h1 class="left-title">Start managing your<br><span>inheritance</span> securely</h1>
+        <p class="left-desc">Create your free account in under 2 minutes and get instant access to Pakistan's most trusted inheritance management platform.</p>
+        <div class="steps-list">
+            <div class="step-item"><div class="step-num">1</div><div><div class="step-content-title">Create your account</div><div class="step-content-sub">Fill in your details and choose your role</div></div></div>
+            <div class="step-item"><div class="step-num">2</div><div><div class="step-content-title">Register your properties</div><div class="step-content-sub">Add all your assets with full details</div></div></div>
+            <div class="step-item"><div class="step-num">3</div><div><div class="step-content-title">Add heirs & calculate Faraid</div><div class="step-content-sub">Assign shares automatically using Islamic law</div></div></div>
+            <div class="step-item"><div class="step-num">4</div><div><div class="step-content-title">Manage everything digitally</div><div class="step-content-sub">Disputes, transfers, documents all in one place</div></div></div>
+        </div>
+    </div>
+
+    <div class="reg-right">
+        <div class="form-header">
+            <h2>Create your account</h2>
+            <p>Free forever · No credit card required</p>
+        </div>
+        <div class="form-divider">
+            <div class="form-divider-line"></div>
+            <span class="form-divider-text">PERSONAL DETAILS</span>
+            <div class="form-divider-line"></div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">⚠ @errorMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert-success">✓ @successMessage</div>
+        }
+
+        <div class="form-row-2">
+            <div class="form-group">
+                <label class="form-label">First Name</label>
+                <input class="form-input" type="text" placeholder="Ahmad"
+                       @bind="firstName" @bind:event="oninput" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last Name</label>
+                <input class="form-input" type="text" placeholder="Khan"
+                       @bind="lastName" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-input" type="email" placeholder="you@example.com"
+                   @bind="email" @bind:event="oninput" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input class="form-input" type="tel" placeholder="+92 300 0000000"
+                   @bind="phone" @bind:event="oninput" />
+        </div>
+
+        <span class="role-label">I am registering as</span>
+        <div class="role-grid">
+            <div class="role-card @(selectedRole == AppConstants.RoleUser ? "selected" : "")"
+                 @onclick='() => selectedRole = AppConstants.RoleUser'>
+                <div class="role-card-icon">👤</div>
+                <div class="role-card-title">User</div>
+                <div class="role-card-sub">Properties, heirs, FRC, documents &amp; dispute applications</div>
+            </div>
+            <div class="role-card @(selectedRole == AppConstants.RoleAdmin ? "selected" : "")"
+                 @onclick='() => selectedRole = AppConstants.RoleAdmin'>
+                <div class="role-card-icon">🛡</div>
+                <div class="role-card-title">Administrator</div>
+                <div class="role-card-sub">Verification, cases, disputes &amp; full platform control</div>
+            </div>
+        </div>
+
+        @if (selectedRole == AppConstants.RoleUser)
+        {
+            <div class="form-group">
+                <label class="form-label">CNIC (without dashes) *</label>
+                <input class="form-input" type="text" placeholder="3520212345671"
+                       maxlength="13" @bind="cnic" />
+            </div>
+            <div class="form-group" style="background:var(--green-light);padding:12px;border-radius:8px;font-size:12px;color:var(--text-muted);">
+                Upload your <strong>FRC</strong> when adding heirs. Submit <strong>dispute/case applications</strong> for admin review (view-only on your own records).
+            </div>
+        }
+        else if (selectedRole == AppConstants.RoleAdmin)
+        {
+            <div class="form-group">
+                <label class="form-label">Administrator Security Key *</label>
+                <input class="form-input" type="password" placeholder="Enter the admin security key"
+                       @bind="adminSecurityKey" />
+            </div>
+            <div class="form-group" style="background:#fff0ee;padding:12px;border-radius:8px;font-size:12px;color:var(--text-muted);border:1px solid rgba(224,62,47,0.2);">
+                <strong>Admin duties:</strong> FRC verification, approve/reject disputes &amp; cases, manage all users and properties, and update the security key under <strong>Security</strong> in the console.
+            </div>
+        }
+
+        <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" type="password" placeholder="Min 8 characters"
+                   value="@password"
+                   @oninput="CheckPasswordStrength" />
+            <div class="password-strength">
+                <div class="strength-bar @GetStrengthClass(1)"></div>
+                <div class="strength-bar @GetStrengthClass(2)"></div>
+                <div class="strength-bar @GetStrengthClass(3)"></div>
+                <span class="strength-label">@strengthLabel</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <input class="form-input" type="password" placeholder="Repeat your password"
+                   @bind="confirmPassword" @bind:event="oninput" />
+        </div>
+
+        <div class="terms-row">
+            <input type="checkbox" @bind="agreedToTerms" />
+            <span class="terms-text">
+                I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a> of MirasPro.
+            </span>
+        </div>
+
+        <button class="btn-register" @onclick="HandleRegister" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span class="loading-spinner"></span>
+            
+                <span>Creating account...</span>
+            }
+            else
+            {
+                <span>Create My Account →</span>
+            }
+        </button>
+
+        <div class="login-prompt">
+            Already have an account? <a href="/login">Sign in here</a>
+        </div>
+    </div>
+</div>
+
+<footer class="reg-footer">
+    <p>© 2025-2026 MirasPro. All rights reserved.</p>
+    <div style="display:flex; gap:1.5rem;">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+    </div>
+</footer>
+
+@code {
+    // ── form fields ──────────────────────────────────────────
+    private string firstName = "";
+    private string lastName = "";
+    private string email = "";
+    private string phone = "";
+    private string selectedRole = AppConstants.RoleUser;
+    private string cnic = "";
+    private string adminSecurityKey = "";
+    private string password = "";
+    private string confirmPassword = "";
+    private bool agreedToTerms = false;
+
+    // ── UI state ─────────────────────────────────────────────
+    private bool isLoading = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+    private int passwordStrength = 0;
+    private string strengthLabel = "";
+
+    // ── password strength ────────────────────────────────────
+    private void CheckPasswordStrength(ChangeEventArgs e)
+    {
+        password = e.Value?.ToString() ?? "";
+        passwordStrength = 0;
+        if (password.Length >= 8) passwordStrength++;
+        if (password.Any(char.IsDigit)) passwordStrength++;
+        if (password.Any(char.IsUpper) || password.Any(c => "!@#$%^&*".Contains(c))) passwordStrength++;
+
+        strengthLabel = passwordStrength switch
+        {
+            1 => "Weak",
+            2 => "Medium",
+            3 => "Strong",
+            _ => ""
+        };
+    }
+
+    private string GetStrengthClass(int bar)
+    {
+        if (passwordStrength == 0) return "";
+        if (passwordStrength == 1 && bar == 1) return "weak";
+        if (passwordStrength == 2 && bar <= 2) return "medium";
+        if (passwordStrength == 3) return "strong";
+        return "";
+    }
+
+    // ── REGISTER — saves to SQL Server ───────────────────────
+    private async Task HandleRegister()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+        { errorMessage = "Please enter your full name."; return; }
+
+        if (string.IsNullOrWhiteSpace(email))
+        { errorMessage = "Please enter your email address."; return; }
+
+        if (string.IsNullOrWhiteSpace(selectedRole))
+        { errorMessage = "Please select your role."; return; }
+
+        if (selectedRole == AppConstants.RoleAdmin && string.IsNullOrWhiteSpace(adminSecurityKey))
+        { errorMessage = "Administrator security key is required."; return; }
+
+        if (selectedRole == AppConstants.RoleUser && string.IsNullOrWhiteSpace(cnic))
+        { errorMessage = "CNIC is required."; return; }
+
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+        { errorMessage = "Password must be at least 8 characters."; return; }
+
+        if (password != confirmPassword)
+        { errorMessage = "Passwords do not match."; return; }
+
+        if (!agreedToTerms)
+        { errorMessage = "Please agree to the Terms of Service to continue."; return; }
+
+        isLoading = true;
+
+        try
+        {
+            (bool Success, string Message) result;
+
+            if (selectedRole == AppConstants.RoleAdmin)
+            {
+                result = await UserService.RegisterAdminAsync(
+                    firstName, lastName, email, phone, password, adminSecurityKey);
+            }
+            else
+            {
+                result = await UserService.RegisterAsync(
+                    firstName, lastName, email, phone, password, selectedRole, cnic);
+            }
+
+            if (result.Success)
+            {
+                successMessage = $"Account created! Welcome to MirasPro, {firstName}! Redirecting to login...";
+                await Task.Delay(2000);
+                Navigation.NavigateTo(selectedRole == AppConstants.RoleAdmin ? "/login/admin" : "/login/user");
+            }
+            else
+            {
+                errorMessage = result.Message; // e.g. "Email already exists"
+            }
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            errorMessage = detail.Contains("Invalid column", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("does not exist", StringComparison.OrdinalIgnoreCase)
+                ? "Database schema is outdated. Restart the app once (schema auto-updates on startup), then try again."
+                : $"Registration failed: {detail}";
+            Console.WriteLine($"Register error: {detail}");
+        }
+
+        isLoading = false;
+    }
+}

@@ -1,0 +1,577 @@
+@page "/heirs"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.HeirService HeirSvc
+@inject inheritance_system.Services.FrcService FrcSvc
+@inject inheritance_system.Services.ComplianceService ComplianceSvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/properties">Properties</a></li>
+        <li><a class="active" href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+       
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <h1>Your <span>Heirs</span></h1>
+            <p>Manage heirs grouped under each registered property</p>
+        </div>
+        <button class="btn-primary" @onclick="OpenAddModal">&#x2B; Add Heir</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="page-main">
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert-success">&#x2713; @successMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    @if (_compliance != null && _compliance.Missing.Any(m => m.Code.StartsWith("FRC_") || m.Code == "NO_PROPERTY"))
+    {
+        <div class="compliance-banner">
+            <h3>Action required — heirs &amp; FRC</h3>
+            <ul>
+                @foreach (var item in _compliance.Missing.Where(m => m.Code.StartsWith("FRC_") || m.Code == "NO_PROPERTY"))
+                {
+                    <li class="@item.Severity">@item.Message</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- INFO BANNER -->
+    <div class="info-banner">
+        &#x2696;
+        <div>
+            <strong>Shares are computed automatically.</strong>
+            Add each heir with their correct relation, then open the
+            <a href="/faraid" style="color:var(--green-primary);font-weight:600;">Faraid Calculator</a>
+            to compute and apply Sharia-compliant share percentages.
+        </div>
+    </div>
+
+    @if (CurrentUser.IsUser)
+    {
+        <div class="info-banner" style="background:var(--brand-primary-light);border-color:rgba(224,62,47,0.2);margin-bottom:1.25rem;">
+            <span style="font-size:1.25rem;">📋</span>
+            <div style="flex:1;">
+                <strong>Family Registration Certificate (FRC)</strong>
+                <p style="margin:4px 0 0;font-size:13px;color:var(--text-muted);">
+                    Upload your FRC when registering heirs. Admin will verify before your profile is locked.
+                </p>
+                @if (_frcExisting != null)
+                {
+                    <p style="margin:8px 0 0;font-size:13px;">
+                        Status: <strong>@_frcExisting.Status</strong>
+                        @if (!string.IsNullOrEmpty(_frcExisting.AdminNotes))
+                        {
+                            <span> — @_frcExisting.AdminNotes</span>
+                        }
+                    </p>
+                }
+                @if (_canSubmitFrc)
+                {
+                    <div style="display:grid;gap:10px;margin-top:12px;max-width:480px;">
+                        <input class="form-input" placeholder="FRC Number e.g. B-42201-0123456" @bind="_frcNumber" />
+                        <InputFile OnChange="OnFrcFileSelected" accept=".pdf,.jpg,.jpeg,.png" class="form-input" />
+                        <button class="btn-primary" style="width:fit-content;" @onclick="SubmitFrc" disabled="@_frcSaving">
+                            @(_frcSaving ? "Uploading..." : "Upload FRC")
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!CurrentUser.CanModifyRecords)
+    {
+        <div class="read-only-banner">View-only mode: you can add new heirs but cannot edit or delete existing records.</div>
+    }
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" placeholder="Search heir name or relation..."
+                   value="@searchQuery" @oninput="OnSearchChanged" />
+        </div>
+        <span class="result-count">@TotalHeirs() heir@(TotalHeirs() == 1 ? "" : "s") found</span>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading"><span class="spinner"></span> Loading heirs...</div>
+    }
+    else if (groups.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="em-icon">&#x1F465;</div>
+            <h3>No heirs found</h3>
+            <p>@(string.IsNullOrEmpty(searchQuery) ? "Add your first heir to a property." : "Try a different search.")</p>
+            @if (string.IsNullOrEmpty(searchQuery))
+            {
+                <button class="btn-primary" @onclick="OpenAddModal">&#x2B; Add Heir</button>
+            }
+        </div>
+    }
+    else
+    {
+        @foreach (var g in groups)
+        {
+            <div class="group-card">
+                <div class="group-head">
+                    <div>
+                        <div class="grp-title">@g.PropertyTitle</div>
+                        <div class="grp-meta">
+                            &#x1F4CD; @(string.IsNullOrEmpty(g.Location) ? "—" : g.Location)
+                            · @(string.IsNullOrEmpty(g.PropertyType) ? "—" : g.PropertyType)
+                        </div>
+                    </div>
+                    <div class="share-pill @SharePillClass(g.TotalShareAssigned)">
+                        @SharePillText(g.TotalShareAssigned)
+                    </div>
+                </div>
+
+                @if (g.Heirs.Count == 0)
+                {
+                    <div class="group-empty">No heirs registered for this property yet.</div>
+                }
+                else
+                {
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Relation</th>
+                                <th>Sharia Share %</th>
+                                <th>Added</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in g.Heirs)
+                            {
+                                <tr>
+                                    <td><span class="heir-name">@h.FullName</span></td>
+                                    <td>@(string.IsNullOrEmpty(h.Relation) ? "—" : h.Relation)</td>
+                                    <td>
+                                        @if (h.SharePercent <= 0m)
+                                        {
+                                            <span class="pending-text">Not yet calculated</span>
+                                        }
+                                        else
+                                        {
+                                            @($"{h.SharePercent:0.##}%")
+                                        }
+                                    </td>
+                                    <td>@h.CreatedAt.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <div class="row-actions">
+                                            @if (CurrentUser.CanModifyRecords)
+                                            {
+                                                <button class="icon-btn" title="Edit" @onclick="() => OpenEditModal(h.HeirId)">&#x270E;</button>
+                                                <button class="icon-btn danger" title="Delete" @onclick="() => OpenDeleteConfirm(h.HeirId, h.FullName)">&#x1F5D1;</button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    }
+</main>
+
+<!-- ADD / EDIT MODAL -->
+@if (showFormModal)
+{
+    <div class="heir-modal-overlay" @onclick="CloseFormModal">
+        <div class="heir-modal" @onclick:stopPropagation="true">
+            <div class="heir-modal-header">
+                <h3>@(editingId == 0 ? "Add New Heir" : "Edit Heir")</h3>
+                <button class="heir-modal-close" @onclick="CloseFormModal">&#x2715;</button>
+            </div>
+            <div class="heir-modal-body">
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert-error" style="margin-bottom:1rem;">&#x26A0; @formError</div>
+                }
+
+                <div class="heir-modal-note">
+                    &#x2696; <strong>Note:</strong> You do not need to enter a share percentage.
+                    Shares are computed automatically from Sharia rules in the
+                    <strong>Faraid Calculator</strong> page once all heirs are added.
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Property *</label>
+                    <select class="form-input" @bind="formPropertyId">
+                        <option value="0">Select property</option>
+                        @foreach (var po in propertyOptions)
+                        {
+                            <option value="@po.PropertyId">@po.Title @(string.IsNullOrEmpty(po.Location) ? "" : " — " + po.Location)</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input class="form-input" type="text" placeholder="e.g. Ali Khan" @bind="formFullName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Relation *</label>
+                    <select class="form-input" @bind="formRelation">
+                        <option value="">Select relation</option>
+                        <optgroup label="Spouse">
+                            <option value="Husband">Husband</option>
+                            <option value="Wife">Wife</option>
+                        </optgroup>
+                        <optgroup label="Parents">
+                            <option value="Father">Father</option>
+                            <option value="Mother">Mother</option>
+                            <option value="Paternal Grandfather">Paternal Grandfather</option>
+                            <option value="Maternal Grandmother">Maternal Grandmother</option>
+                            <option value="Paternal Grandmother">Paternal Grandmother</option>
+                        </optgroup>
+                        <optgroup label="Children">
+                            <option value="Son">Son</option>
+                            <option value="Daughter">Daughter</option>
+                            <option value="Son's Son">Son's Son (Grandson)</option>
+                            <option value="Son's Daughter">Son's Daughter (Granddaughter)</option>
+                        </optgroup>
+                        <optgroup label="Siblings">
+                            <option value="Full Brother">Full Brother</option>
+                            <option value="Full Sister">Full Sister</option>
+                            <option value="Paternal Half Brother">Paternal Half Brother</option>
+                            <option value="Paternal Half Sister">Paternal Half Sister</option>
+                            <option value="Maternal Half Brother">Maternal Half Brother</option>
+                            <option value="Maternal Half Sister">Maternal Half Sister</option>
+                        </optgroup>
+                        <optgroup label="Other">
+                            <option value="Paternal Uncle">Paternal Uncle</option>
+                            <option value="Paternal Uncle's Son">Paternal Uncle's Son (Cousin)</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="heir-modal-footer">
+                <button class="btn-secondary" @onclick="CloseFormModal">Cancel</button>
+                <button class="btn-save" @onclick="SaveHeir" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : (editingId == 0 ? "Add Heir" : "Save Changes"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- DELETE CONFIRM MODAL -->
+@if (showDeleteModal)
+{
+    <div class="heir-modal-overlay" @onclick="CloseDeleteModal">
+        <div class="heir-modal" style="max-width:420px;" @onclick:stopPropagation="true">
+            <div class="heir-modal-header">
+                <h3>Remove Heir</h3>
+                <button class="heir-modal-close" @onclick="CloseDeleteModal">&#x2715;</button>
+            </div>
+            <div class="heir-modal-body">
+                <div class="confirm-icon">&#x1F5D1;</div>
+                <p class="confirm-msg">Are you sure you want to remove<br><strong>"@deletingName"</strong>?<br><br>This action cannot be undone.</p>
+            </div>
+            <div class="heir-modal-footer">
+                <button class="btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                <button class="btn-danger" @onclick="ConfirmDelete" disabled="@isSaving">
+                    @(isSaving ? "Removing..." : "Remove Heir")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<inheritance_system.Services.HeirsByProperty> groups = new();
+    private List<inheritance_system.Services.PropertyOption> propertyOptions = new();
+    private bool isLoading = true;
+    private UserComplianceReport? _compliance;
+    private string searchQuery = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    // Form modal
+    private bool showFormModal = false;
+    private bool isSaving = false;
+    private int editingId = 0;
+    private int formPropertyId = 0;
+    private string formFullName = "";
+    private string formRelation = "";
+    private string formError = "";
+
+    // Delete modal
+    private bool showDeleteModal = false;
+    private int deletingId = 0;
+    private string deletingName = "";
+
+    private InheritanceSystem.Models.FrcDocument? _frcExisting;
+    private bool _canSubmitFrc;
+    private string _frcNumber = "";
+    private IBrowserFile? _frcFile;
+    private bool _frcSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        propertyOptions = await HeirSvc.GetPropertyOptionsAsync(CurrentUser.UserId);
+        _compliance = await ComplianceSvc.GetUserComplianceAsync(CurrentUser.UserId);
+        if (CurrentUser.IsUser)
+        {
+            _frcExisting = await FrcSvc.GetLatestByUserAsync(CurrentUser.UserId);
+            _canSubmitFrc = _frcExisting == null || _frcExisting.IsRejected();
+        }
+        await LoadHeirs();
+    }
+
+    private void OnFrcFileSelected(InputFileChangeEventArgs e) => _frcFile = e.File;
+
+    private async Task SubmitFrc()
+    {
+        if (string.IsNullOrWhiteSpace(_frcNumber) || _frcFile == null)
+        {
+            errorMessage = "FRC number and document file are required.";
+            return;
+        }
+        _frcSaving = true;
+        await using var stream = _frcFile.OpenReadStream(10 * 1024 * 1024);
+        var (ok, msg) = await FrcSvc.SubmitAsync(
+            CurrentUser.UserId, _frcNumber, stream, _frcFile.Name, _frcFile.Size);
+        _frcSaving = false;
+        if (ok)
+        {
+            successMessage = msg;
+            _frcExisting = await FrcSvc.GetLatestByUserAsync(CurrentUser.UserId);
+            _canSubmitFrc = false;
+        }
+        else
+            errorMessage = msg;
+    }
+
+    private async Task LoadHeirs()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            groups = await HeirSvc.GetGroupedAsync(CurrentUser.UserId, searchQuery);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not load heirs. Please ensure SQL Server is running.";
+            Console.WriteLine($"HEIRS ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private System.Threading.CancellationTokenSource? _searchCts;
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        try
+        {
+            await Task.Delay(350, _searchCts.Token);
+            await LoadHeirs();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private int TotalHeirs() => groups.Sum(g => g.Heirs.Count);
+
+    // ── FORM MODAL ──────────────────────────────────────────
+    private void OpenAddModal()
+    {
+        if (propertyOptions.Count == 0)
+        {
+            errorMessage = "Please register at least one property before adding heirs.";
+            return;
+        }
+        if (_frcExisting == null)
+        {
+            errorMessage = "You must upload your Family Registration Certificate (FRC) before adding heirs.";
+            return;
+        }
+        if (_frcExisting.IsRejected())
+        {
+            errorMessage = "Your FRC was rejected and all heirs were removed. Please resubmit your FRC before adding heirs again.";
+            return;
+        }
+   
+        editingId = 0;
+        formPropertyId = propertyOptions[0].PropertyId;
+        formFullName = ""; formRelation = ""; formError = "";
+        showFormModal = true;
+    }
+
+    private async Task OpenEditModal(int id)
+    {
+        var heir = await HeirSvc.GetByIdAsync(id, CurrentUser.UserId);
+        if (heir == null) { errorMessage = "Heir not found."; return; }
+        editingId = id;
+        formPropertyId = heir.PropertyId;
+        formFullName = heir.FullName;
+        formRelation = heir.Relation;
+        formError = "";
+        showFormModal = true;
+    }
+
+    private void CloseFormModal() { showFormModal = false; }
+
+    private async Task SaveHeir()
+    {
+        formError = "";
+        if (formPropertyId == 0) { formError = "Please select a property."; return; }
+        if (string.IsNullOrWhiteSpace(formFullName)) { formError = "Full name is required."; return; }
+        if (string.IsNullOrWhiteSpace(formRelation)) { formError = "Please select a relation."; return; }
+
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            // Share is always 0 on add/edit — Faraid Calculator will fill it in.
+            if (editingId == 0)
+            {
+                var (ok, msg, _) = await HeirSvc.CreateAsync(
+                    CurrentUser.UserId, formPropertyId, formFullName, formRelation, 0m);
+                if (ok)
+                {
+                    successMessage = msg + " Open the Faraid Calculator to compute Sharia shares.";
+                    showFormModal = false;
+                    await LoadHeirs();
+                }
+                else formError = msg;
+            }
+            else
+            {
+                var (ok, msg) = await HeirSvc.UpdateAsync(
+                    editingId, CurrentUser.UserId, formPropertyId, formFullName, formRelation, 0m);
+                if (ok)
+                {
+                    successMessage = msg + " Re-run the Faraid Calculator to refresh shares.";
+                    showFormModal = false;
+                    await LoadHeirs();
+                }
+                else formError = msg;
+            }
+        }
+        catch (Exception ex)
+        {
+            formError = "An error occurred. Please try again.";
+            Console.WriteLine($"SAVE HEIR ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    // ── DELETE MODAL ───────────────────────────────────────
+    private void OpenDeleteConfirm(int id, string name)
+    {
+        deletingId = id; deletingName = name; showDeleteModal = true;
+    }
+    private void CloseDeleteModal() { showDeleteModal = false; }
+
+    private async Task ConfirmDelete()
+    {
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            var (ok, msg) = await HeirSvc.DeleteAsync(deletingId, CurrentUser.UserId);
+            if (ok) { successMessage = msg; }
+            else { errorMessage = msg; }
+            showDeleteModal = false;
+            await LoadHeirs();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Delete failed. Please try again.";
+            Console.WriteLine($"DELETE HEIR ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    // ── HELPERS ──────────────────────────────────────────────
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string SharePillClass(decimal total)
+    {
+        if (total <= 0m) return "share-pending";
+        if (total > 100m) return "share-bad";
+        if (total >= 99.99m && total <= 100.01m) return "share-ok";
+        return "share-warn";
+    }
+
+    private string SharePillText(decimal total)
+    {
+        if (total <= 0m) return "Shares not calculated yet";
+        return $"Total assigned: {total:0.##}%";
+    }
+}

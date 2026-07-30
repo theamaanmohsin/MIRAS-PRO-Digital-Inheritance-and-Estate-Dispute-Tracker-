@@ -1,0 +1,18 @@
+﻿@inherits LayoutComponentBase
+@inject CurrentUserService CurrentUser
+
+<div style="display:flex; min-height:100vh;">
+    <AdminSidebar />
+    <main class="admin-main-wrap">
+        <div style="padding:2rem 2.5rem; animation: fadeIn 0.4s ease-out;">
+            @Body
+        </div>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+    }
+}

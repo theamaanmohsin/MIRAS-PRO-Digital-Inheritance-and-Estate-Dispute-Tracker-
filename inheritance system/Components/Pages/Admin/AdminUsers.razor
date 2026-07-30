@@ -1,0 +1,130 @@
+@page "/admin/users"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject UserService UserSvc
+@inject AdminService AdminSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>Users — Admin</PageTitle>
+
+@if (_ready)
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">All Users</h1>
+            <p class="page-sub">View and manage every User and Administrator account</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert @(_message.StartsWith("✓") ? "alert-success" : "alert-error")" style="margin-bottom:1rem;">@_message</div>
+    }
+
+    <div class="admin-panel">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>CNIC</th>
+                    <th>Joined</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in _users)
+                {
+                    <tr>
+                        <td><strong>@u.FullName</strong></td>
+                        <td>@u.Email</td>
+                        <td>
+                            <span class="badge @(u.Role == AppConstants.RoleAdmin ? "badge-red" : "badge-blue")">
+                                @(u.Role == AppConstants.RoleAdmin ? "Admin" : "User")
+                            </span>
+                        </td>
+                        <td>@(u.Phone ?? "—")</td>
+                        <td>@(u.Role == AppConstants.RoleAdmin ? "—" : (u.Cnic ?? "—"))</td>
+                        <td>@u.CreatedAt.ToString("d MMM yyyy")</td>
+                        <td>
+                            @if (u.UserId != CurrentUser.UserId)
+                            {
+                                <button class="btn btn-danger" style="padding:5px 12px;font-size:12px;"
+                                        @onclick="() => OpenDeleteConfirm(u)">
+                                    Delete
+                                </button>
+                            }
+                            else
+                            {
+                                <span style="font-size:12px;color:var(--text-muted);">You</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- DELETE CONFIRM MODAL -->
+@if (_showDeleteModal && _target != null)
+{
+    <div class="adm-modal-overlay" @onclick="CloseModal">
+        <div class="adm-modal" style="max-width:420px;" @onclick:stopPropagation="true">
+            <div class="adm-modal-header">
+                <h3>Delete User</h3>
+                <button class="adm-modal-close" @onclick="CloseModal">&#x2715;</button>
+            </div>
+            <div class="adm-modal-body" style="text-align:center;">
+                <div style="font-size:36px;margin-bottom:1rem;">⚠️</div>
+                <p>Permanently delete <strong>@_target.FullName</strong> (@_target.Email)?</p>
+                <p style="margin-top:8px;font-size:13px;color:var(--text-muted);">
+                    All their properties, heirs, and documents will also be deleted. This cannot be undone.
+                </p>
+            </div>
+            <div class="adm-modal-footer">
+                <button class="btn btn-outline" @onclick="CloseModal">Cancel</button>
+                <button class="btn btn-danger" @onclick="ConfirmDelete" disabled="@_saving">
+                    @(_saving ? "Deleting..." : "Delete User")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    bool _ready;
+    bool _saving;
+    string _message = "";
+    List<InheritanceSystem.Models.User> _users = new();
+
+    InheritanceSystem.Models.User? _target;
+    bool _showDeleteModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsAdmin) { Nav.NavigateTo("/login/admin", forceLoad: true); return; }
+        _users = await UserSvc.GetAllUsersAsync();
+        _ready = true;
+    }
+
+    void OpenDeleteConfirm(InheritanceSystem.Models.User u) { _target = u; _showDeleteModal = true; }
+    void CloseModal() { _showDeleteModal = false; _target = null; }
+
+    async Task ConfirmDelete()
+    {
+        if (_target == null) return;
+        _saving = true;
+        var (ok, msg) = await UserSvc.DeleteUserAsync(_target.UserId, CurrentUser.UserId);
+        if (ok) await AdminSvc.LogAsync(CurrentUser.UserId, CurrentUser.FullName, "User_Deleted", "User", _target.UserId, _target.Email);
+        _message = ok ? $"✓ {msg}" : $"⚠ {msg}";
+        CloseModal();
+        _users = await UserSvc.GetAllUsersAsync();
+        _saving = false;
+    }
+}

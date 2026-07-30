@@ -1,0 +1,71 @@
+@page "/admin/compliance"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ComplianceService ComplianceSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>User Compliance — Admin</PageTitle>
+
+@if (!_ready)
+{
+    <div class="loading-wrap"><div class="spinner"></div></div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">User Compliance</h1>
+            <p class="page-sub">Users missing FRC approval or required property documents</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    <div class="admin-panel">
+        @foreach (var user in _reports)
+        {
+            <div class="compliance-user-card @(user.IsComplete ? "ok" : "warn")">
+                <div class="compliance-user-hdr">
+                    <div>
+                        <strong>@user.UserName</strong>
+                        <div style="font-size:12px;color:var(--text-muted);">@user.Email</div>
+                    </div>
+                    @if (user.IsComplete)
+                    {
+                        <span class="badge badge-green">Complete</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-amber">@user.Missing.Count issue(s)</span>
+                    }
+                </div>
+                @if (!user.IsComplete)
+                {
+                    <ul class="compliance-list">
+                        @foreach (var m in user.Missing)
+                        {
+                            <li class="compliance-item @m.Severity">@m.Message</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    bool _ready;
+    List<UserComplianceReport> _reports = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsAdmin)
+        {
+            Nav.NavigateTo("/login/admin", forceLoad: true);
+            return;
+        }
+        _reports = await ComplianceSvc.GetAllUsersComplianceAsync();
+        _ready = true;
+    }
+}

@@ -1,0 +1,99 @@
+@page "/login/admin"
+@layout EmptyLayout
+@inject UserService UserService
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<Title>Admin Sign In — MirasPro</Title>
+
+<div class="auth-portal" style="min-height:100vh;">
+    <nav class="auth-portal-nav">
+        <a href="/" style="color:#fff;text-decoration:none;font-family:'Playfair Display',serif;">MirasPro Admin</a>
+        <a href="/login" style="color:rgba(255,255,255,0.75);font-size:0.875rem;">← Back to login options</a>
+    </nav>
+
+    <main class="auth-portal-main">
+        <div style="background:#fff;border-radius:14px;padding:2.5rem;max-width:420px;width:100%;box-shadow:var(--shadow-lg);animation:slideUp 0.4s ease-out;border-top:4px solid var(--brand-secondary);">
+            <h2 style="font-family:'Playfair Display',serif;margin:0 0 0.35rem;">Administrator Sign In</h2>
+            <p style="color:var(--text-secondary);font-size:0.9rem;margin:0 0 1.5rem;">Governance console access</p>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:0.875rem;margin-bottom:1rem;">@errorMessage</div>
+            }
+
+            <div class="form-group">
+                <label class="form-label">Admin Email</label>
+                <input class="form-input" type="email" @bind="email" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input class="form-input" type="password" @bind="password" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Admin Secret Key *</label>
+                <input class="form-input" type="password" @bind="adminSecret"
+                       placeholder="Enter administrator secret from system owner" />
+                <div class="form-hint">Same key as on the registration page (Administrator role).</div>
+            </div>
+
+            <button class="btn-brand" style="width:100%;background:var(--brand-secondary);" @onclick="HandleLogin" disabled="@isLoading">
+                @(isLoading ? "Signing in..." : "Sign In to Console →")
+            </button>
+
+            <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:var(--text-secondary);">
+                <a href="/register">Register</a> — select <strong>Administrator</strong> and enter the security key
+            </p>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string adminSecret = "";
+    private bool isLoading;
+    private string errorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        errorMessage = "";
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please enter email and password.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(adminSecret))
+        {
+            errorMessage = "Please enter the administrator secret key.";
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var result = await UserService.LoginAdminAsync(email, password, adminSecret);
+            if (result.Success && result.User != null)
+            {
+                await CurrentUser.SetUserAsync(result.User.UserId, result.User.FullName, result.User.Email, result.User.Role);
+                Navigation.NavigateTo("/admin/console", forceLoad: true);
+            }
+            else
+                errorMessage = result.Message;
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            errorMessage = detail.Contains("network", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("connection", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("login failed", StringComparison.OrdinalIgnoreCase)
+                ? $"Database connection failed. Check SQL Server is running and appsettings.json points to InheritanceDB. ({detail})"
+                : $"Sign-in failed: {detail}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,77 @@
+@page "/admin/properties"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject PropertyService PropertySvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>Properties — Admin</PageTitle>
+
+@if (_ready)
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">All Properties</h1>
+            <p class="page-sub">View and manage every registered property on the platform</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="admin-alert-banner" style="margin-bottom:1rem">@_message</div>
+    }
+
+    <div class="admin-panel">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Owner</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Value (PKR)</th>
+                    <th>Heirs</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _rows)
+                {
+                    <tr>
+                        <td><strong>@row.Item.Title</strong></td>
+                        <td>@row.OwnerName</td>
+                        <td>@row.Item.PropertyType</td>
+                        <td>@row.Item.Location</td>
+                        <td>@row.Item.EstimatedValue.ToString("N0")</td>
+                        <td>@row.Item.HeirCount</td>
+                        <td>
+                            <button class="btn btn-xs btn-danger-outline" @onclick="() => Delete(row.Item.PropertyId)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    bool _ready;
+    string _message = "";
+    List<(PropertyListItem Item, string OwnerName)> _rows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsAdmin) { Nav.NavigateTo("/login/admin", forceLoad: true); return; }
+        _rows = await PropertySvc.GetAllForAdminAsync();
+        _ready = true;
+    }
+
+    async Task Delete(int id)
+    {
+        var (ok, msg) = await PropertySvc.DeleteByAdminAsync(id);
+        _message = msg;
+        if (ok) _rows = await PropertySvc.GetAllForAdminAsync();
+    }
+}

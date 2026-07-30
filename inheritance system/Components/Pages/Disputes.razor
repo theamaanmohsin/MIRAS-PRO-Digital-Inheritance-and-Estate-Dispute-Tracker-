@@ -1,0 +1,421 @@
+@page "/disputes"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.DisputeService DisputeSvc
+@inject inheritance_system.Services.HeirService HeirSvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a class="active" href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+       
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <h1>Dispute <span>Applications</span></h1>
+            <p>Submit applications for admin review — you cannot edit records after submission unless allowed</p>
+        </div>
+        <button class="btn-primary" @onclick="OpenAddModal">&#x2B; Submit Application</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="page-main">
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert-success">&#x2713; @successMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    <div class="read-only-banner" style="margin-bottom:1.25rem;">
+        Applications are reviewed by administrators. You can view status and resubmit only when rejection allows editing.
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Disputes</div>
+            <div class="stat-value">@statTotal</div>
+            <div class="stat-sub">All time</div>
+        </div>
+        <div class="stat-card gold">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value">@statPending</div>
+            <div class="stat-sub">Awaiting review</div>
+        </div>
+        <div class="stat-card" style="--accent:#2c4a8a;">
+            <div class="stat-label">Under Review</div>
+            <div class="stat-value">@statReview</div>
+            <div class="stat-sub">Being processed</div>
+        </div>
+        <div class="stat-card ok">
+            <div class="stat-label">Approved</div>
+            <div class="stat-value">@statApproved</div>
+            <div class="stat-sub">Accepted by admin</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-label">Rejected</div>
+            <div class="stat-value">@statRejected</div>
+            <div class="stat-sub">Needs correction</div>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" placeholder="Search by property, type or description..."
+                   value="@searchQuery" @oninput="OnSearchChanged" />
+        </div>
+        <select class="filter-select" @bind="statusFilter" @bind:after="LoadDisputes">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+        <span class="result-count">@disputes.Count dispute@(disputes.Count == 1 ? "" : "s") found</span>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+        @if (isLoading)
+        {
+            <div class="loading"><span class="spinner"></span> Loading disputes...</div>
+        }
+        else if (disputes.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="em-icon">&#x2696;</div>
+                <h3>No disputes found</h3>
+                <p>@(string.IsNullOrEmpty(searchQuery) && string.IsNullOrEmpty(statusFilter)
+                    ? "File your first dispute if you have a land or inheritance issue."
+                    : "Try adjusting your search or filter.")</p>
+                @if (string.IsNullOrEmpty(searchQuery) && string.IsNullOrEmpty(statusFilter))
+                {
+                    <button class="btn-primary" @onclick="OpenAddModal">&#x2B; File Dispute</button>
+                }
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Admin feedback</th>
+                        <th>Filed On</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in disputes)
+                    {
+                        <tr>
+                            <td>
+                                <div class="dispute-title">@d.PropertyTitle</div>
+                                @if (!string.IsNullOrEmpty(d.Location))
+                                {
+                                    <div class="dispute-meta">&#x1F4CD; @d.Location</div>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(d.DisputeType))
+                                {
+                                    <span class="pill pill-type">@d.DisputeType</span>
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="desc-text">@(string.IsNullOrEmpty(d.Description) ? "—" : d.Description)</div>
+                            </td>
+                            <td><span class="pill @StatusPillClass(d.Status)">@d.Status</span></td>
+                            <td style="font-size:12px;color:var(--text-muted);max-width:200px;">
+                                @(string.IsNullOrEmpty(d.AdminRejectionReason) ? "—" : d.AdminRejectionReason)
+                            </td>
+                            <td>@d.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td>
+                                @if (d.AllowUserEdit && d.Status == "Rejected")
+                                {
+                                    <button class="icon-btn" title="Edit &amp; resubmit" @onclick="() => OpenEditModal(d.DisputeId)">&#x270E;</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</main>
+
+<!-- ADD / EDIT MODAL -->
+@if (showFormModal)
+{
+    <div class="disp-modal-overlay" @onclick="CloseFormModal">
+        <div class="disp-modal" @onclick:stopPropagation="true">
+            <div class="disp-modal-header">
+                <h3>@(editingId == 0 ? "Submit Application" : "Resubmit Application")</h3>
+                <button class="disp-modal-close" @onclick="CloseFormModal">&#x2715;</button>
+            </div>
+            <div class="disp-modal-body">
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert-error" style="margin-bottom:1rem;">&#x26A0; @formError</div>
+                }
+                <div class="form-group">
+                    <label class="form-label">Property *</label>
+                    <select class="form-input" @bind="formPropertyId">
+                        <option value="0">Select property</option>
+                        @foreach (var po in propertyOptions)
+                        {
+                            <option value="@po.PropertyId">@po.Title @(string.IsNullOrEmpty(po.Location) ? "" : " — " + po.Location)</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dispute Type</label>
+                    <select class="form-input" @bind="formDisputeType">
+                        <option value="">Select type</option>
+                        <option value="Ownership">Ownership</option>
+                        <option value="Boundary">Boundary</option>
+                        <option value="Inheritance Share">Inheritance Share</option>
+                        <option value="Fraud">Fraud</option>
+                        <option value="Illegal Occupation">Illegal Occupation</option>
+                        <option value="Document Forgery">Document Forgery</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea class="form-input" placeholder="Describe the dispute in detail..." @bind="formDescription"></textarea>
+                </div>
+            </div>
+            <div class="disp-modal-footer">
+                <button class="btn-secondary" @onclick="CloseFormModal">Cancel</button>
+                <button class="btn-save" @onclick="SaveDispute" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : (editingId == 0 ? "File Dispute" : "Save Changes"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<inheritance_system.Services.DisputeListItem> disputes = new();
+    private List<inheritance_system.Services.PropertyOption> propertyOptions = new();
+    private bool isLoading = true;
+    private string searchQuery = "";
+    private string statusFilter = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    // Stats
+    private int statTotal = 0;
+    private int statPending = 0;
+    private int statReview = 0;
+    private int statApproved = 0;
+    private int statRejected = 0;
+
+    // Form modal
+    private bool showFormModal = false;
+    private bool isSaving = false;
+    private int editingId = 0;
+    private int formPropertyId = 0;
+    private string formDisputeType = "";
+    private string formDescription = "";
+    private string formError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+        if (CurrentUser.IsAdmin)
+        {
+            Navigation.NavigateTo("/admin/disputes", forceLoad: true);
+            return;
+        }
+
+        propertyOptions = await HeirSvc.GetPropertyOptionsAsync(CurrentUser.UserId);
+        await LoadDisputes();
+        await LoadStats();
+    }
+
+    private async Task LoadDisputes()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            disputes = await DisputeSvc.GetDisputesAsync(CurrentUser.UserId, searchQuery, statusFilter);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not load disputes. Please ensure SQL Server is running.";
+            Console.WriteLine($"DISPUTES ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        var (total, pending, review, approved, rejected) = await DisputeSvc.GetStatsAsync(CurrentUser.UserId);
+        statTotal = total; statPending = pending; statReview = review; statApproved = approved; statRejected = rejected;
+        StateHasChanged();
+    }
+
+    private System.Threading.CancellationTokenSource? _searchCts;
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        try
+        {
+            await Task.Delay(350, _searchCts.Token);
+            await LoadDisputes();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    // ── FORM MODAL ──────────────────────────────────────────
+    private void OpenAddModal()
+    {
+        if (propertyOptions.Count == 0)
+        {
+            errorMessage = "Please register at least one property before filing a dispute.";
+            return;
+        }
+        editingId = 0;
+        formPropertyId = propertyOptions[0].PropertyId;
+        formDisputeType = ""; formDescription = ""; formError = "";
+        showFormModal = true;
+    }
+
+    private async Task OpenEditModal(int id)
+    {
+        var dispute = await DisputeSvc.GetByIdAsync(id, CurrentUser.UserId);
+        if (dispute == null) { errorMessage = "Dispute not found."; return; }
+        editingId = id;
+        formPropertyId = dispute.PropertyId;
+        formDisputeType = dispute.DisputeType ?? "";
+        formDescription = dispute.Description ?? "";
+        if (!dispute.AllowUserEdit)
+        {
+            errorMessage = "This application cannot be edited. Wait for administrator feedback.";
+            return;
+        }
+        formError = "";
+        showFormModal = true;
+    }
+
+    private void CloseFormModal() { showFormModal = false; }
+
+    private async Task SaveDispute()
+    {
+        formError = "";
+        if (formPropertyId == 0) { formError = "Please select a property."; return; }
+        if (string.IsNullOrWhiteSpace(formDescription)) { formError = "Description is required."; return; }
+
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            if (editingId == 0)
+            {
+                var (ok, msg) = await DisputeSvc.CreateAsync(
+                    CurrentUser.UserId, formPropertyId, formDisputeType, formDescription);
+                if (ok) { successMessage = msg; showFormModal = false; await LoadDisputes(); await LoadStats(); }
+                else formError = msg;
+            }
+            else
+            {
+                var (ok, msg) = await DisputeSvc.UpdateByUserAsync(
+                    editingId, CurrentUser.UserId, formPropertyId, formDisputeType, formDescription);
+                if (ok) { successMessage = msg; showFormModal = false; await LoadDisputes(); await LoadStats(); }
+                else formError = msg;
+            }
+        }
+        catch (Exception ex)
+        {
+            formError = "An error occurred. Please try again.";
+            Console.WriteLine($"SAVE DISPUTE ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string StatusPillClass(string s) => s?.ToLower() switch
+    {
+        "pending"      => "pill-pending",
+        "under review" => "pill-review",
+        "approved"     => "pill-resolved",
+        "rejected"     => "pill-closed",
+        "resolved"     => "pill-resolved",
+        "closed"       => "pill-closed",
+        _              => "pill-pending"
+    };
+}

@@ -1,0 +1,14 @@
+@import url("home.css");
+@import url("dashboard.css");
+@import url("register.css");
+@import url("properties.css");
+@import url("propertydetail.css");
+@import url("heirs.css");
+@import url("disputes.css");
+@import url("documents.css");
+@import url("faraid.css");
+@import url("adminconsole.css");
+@import url("frcqueue.css");
+@import url("frcdetail.css");
+@import url("adminsidebar.css");
+/* Admin pages use adminconsole.css + miras-theme admin-panel styles */

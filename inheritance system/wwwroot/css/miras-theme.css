@@ -1,0 +1,992 @@
+/* ============================================================
+   FILE: miras-theme.css
+   PURPOSE: Global design token base — imported first by all pages.
+            Defines CSS variables (colors, shadows, radii, easing),
+            resets, shared keyframes, and cross-page component
+            overrides (nav, cards, buttons, forms, badges, tables).
+   DEPENDS ON: nothing — this file is the root of the cascade.
+   USED BY: all-pages.css imports this as the first stylesheet.
+   ============================================================ */
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 1 — DESIGN TOKENS  (CSS custom properties / variables)
+   All colors, shadows, radii and timing live here.
+   Page-level files should reference these variables — never
+   hard-code the same values again in a child file.
+   ────────────────────────────────────────────────────────── */
+:root {
+    /* ── Brand palette ─────────────────────────────────── */
+    --brand-primary: #006aff; /* Main CTA blue — buttons, links, focus rings       */
+    --brand-primary-dark: #0056d6; /* Darker blue — button hover, active states         */
+    --brand-primary-light: #dbeafe; /* Light blue tint — avatar backgrounds, highlights  */
+    /* FIX: this was referenced but never defined,        */
+    /* causing .dash-nav .user-avatar to fall back ugly   */
+    --brand-secondary: #1f2937; /* Dark slate — sidebar bg, dark hero panels          */
+    --brand-secondary-soft: #374151; /* Slightly lighter slate — secondary dark surfaces   */
+    /* ── Surface / background ─────────────────────────── */
+    --surface: #ffffff; /* Pure white — card & panel backgrounds                   */
+    --surface-muted: #f8fafc; /* Off-white page background                               */
+    --surface-dark: #111827; /* Near-black — footer, admin sidebar                      */
+    /* ── Borders ─────────────────────────────────────── */
+    --border: #d1d5db; /* Default border color for cards, inputs, dividers          */
+    --border-focus: #006aff; /* Focus-ring border — used in :focus-visible rules          */
+    /* ── Text hierarchy ───────────────────────────────── */
+    --text-primary: #111827; /* Headings, strong body copy — highest contrast           */
+    --text-secondary: #475569; /* Secondary labels, table headers                         */
+    --text-muted: #64748b; /* Placeholder text, helper text, captions                 */
+    /* ── Semantic / status colors ─────────────────────── */
+    --success: #15803d; /* Success states — green checkmarks, approved badges             */
+    --warning: #d97706; /* Warning states — amber alerts, pending indicators              */
+    --danger: #dc2626; /* Danger / error states — delete buttons, error alerts           */
+    /* ── Elevation (box-shadow) ───────────────────────── */
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08); /* Subtle lift — nav, toolbars        */
+    --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.10); /* Card hover state                   */
+    --shadow-lg: 0 20px 45px rgba(0, 106, 255, 0.18); /* Modal / floating panel             */
+    /* ── Border radii ─────────────────────────────────── */
+    --radius: 10px; /* Buttons, inputs, small chips                                    */
+    --radius-lg: 14px; /* Cards, panels, modals                                           */
+    /* ── Animation easing ─────────────────────────────── */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* Smooth deceleration — most UI    */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Slight overshoot — logo, icons   */
+    --transition: 220ms var(--ease-out); /* Default transition shorthand      */
+    /* ── Legacy aliases ───────────────────────────────────────────────────────────────────
+       Kept so existing Razor/HTML markup continues to work without edits.
+       These simply map old green-themed variable names to the new brand tokens.
+       Do not use these in new code — prefer the --brand-* and --text-* names above.
+       ─────────────────────────────────────────────────────────────────────────────────── */
+    --green-dark: var(--brand-secondary); /* Dark nav/sidebar background             */
+    --green-primary: var(--brand-primary); /* Primary action color                    */
+    --green-mid: var(--brand-primary-dark); /* Hover/active variant of primary         */
+    --green-accent: #60a5fa; /* Light accent used on dark hero sections  */
+    --green-light: var(--surface-muted); /* Table header background                 */
+    --green-border: var(--border); /* Standard border color alias             */
+    --green-pale: #eaf2ff; /* Very light blue — icon backgrounds       */
+    --text-dark: var(--text-primary); /* Alias for primary text                  */
+    --text-soft: var(--text-secondary); /* Alias for secondary text                */
+    --amber: #f59e0b; /* Status dot color (alert pulse)          */
+    --gold: #d97706; /* Gold accent — badge text, ornaments     */
+    --gold-light: #fff7ed; /* Gold icon background tint               */
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 2 — GLOBAL RESET
+   Normalises box model and removes browser default spacing.
+   ────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--surface-muted);
+    color: var(--text-primary);
+    /* Source Sans 3 for body; Inter/Segoe as system fallbacks */
+    font-family: 'Source Sans 3', Inter, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; /* Crisper text on macOS/iOS */
+    text-rendering: optimizeLegibility; /* Better kerning for headings */
+}
+
+a {
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+    a:hover {
+        color: var(--brand-primary-dark);
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 3 — SHARED KEYFRAME ANIMATIONS
+   Declared once here so every page can use them without
+   redefining. Page-level files just apply via animation: name.
+   ────────────────────────────────────────────────────────── */
+
+/* Simple opacity fade — modals, overlays */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Slide up + fade — stat cards, page headings, panels */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Slide down + fade — alert banners, dropdown menus */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Scale + fade — modals, confirmation dialogs */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Infinite rotation — loading spinners */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Expanding ring — alert dot pulse (admin console) */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.55);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(201, 168, 76, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+    }
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 4 — AUTH PORTAL
+   Full-page login/role-selection screen shown before dashboard.
+   Blue-to-dark gradient background with white choice cards.
+   ────────────────────────────────────────────────────────── */
+
+/* Full-viewport gradient wrapper */
+.auth-portal {
+    min-height: 100vh;
+    background: linear-gradient(135deg, rgba(0,10,30,0.50) 0%, rgba(0,30,80,0.45) 50%, rgba(0,0,0,0.55) 100%), url('/images/loginBg.png') center center / cover no-repeat;
+}
+
+/* Main headline on the auth portal */
+.auth-portal-title {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0 0 0.75rem;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+/* Subtitle text below the portal headline */
+.auth-portal-sub {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1.05rem;
+    margin-bottom: 2rem;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Constrains the grid of role-choice cards */
+.auth-portal-card-wrap {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* 2-column grid holding the role-choice cards */
+.auth-choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+/* Individual role-choice card — white box on dark background */
+.auth-choice-card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 16px;
+    padding: 2.25rem;
+    text-align: left;
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition), background var(--transition);
+    color: inherit;
+    display: block;
+    animation: fadeInUp 0.4s var(--ease-out) both;
+}
+    /* Second card animates slightly after first */
+    .auth-choice-card:nth-child(2) {
+        animation-delay: 0.08s;
+    }
+
+    /* Hover — card lifts and gets a gold border */
+    .auth-choice-card:hover {
+        transform: translateY(-6px);
+        border-color: #f5c842;
+        background: rgba(255,255,255,0.14);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+
+    .auth-choice-card h3 {
+        margin: 0 0 0.5rem;
+        color: #ffffff;
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+
+    .auth-choice-card p {
+        margin: 0 0 1.25rem;
+        color: rgba(255,255,255,0.75);
+        font-size: 0.92rem;
+        line-height: 1.6;
+    }
+
+/* "Sign in →" link-style text inside each card */
+.auth-choice-cta {
+    font-weight: 600;
+    color: #f5c842;
+    font-size: 0.9rem;
+    letter-spacing: 0.3px;
+}
+
+/* Coloured icon box at the top of each choice card */
+.auth-choice-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Nav bar on the auth portal page (transparent/dark variant) */
+.auth-portal-nav a {
+    color: rgba(255,255,255,0.85);
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+    .auth-portal-nav a:hover {
+        color: #f5c842;
+    }
+
+.auth-portal-nav .nav-logo-box {
+    background: var(--brand-primary) !important;
+    color: #fff !important;
+}
+
+.auth-portal-nav .nav-brand span {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+    .auth-portal-nav .nav-brand span span {
+        color: #f5c842;
+    }
+
+.auth-portal-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 3rem;
+    height: 64px;
+    background: rgba(15, 23, 50, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 2px 20px rgba(0,0,0,0.25);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* Vertically + horizontally centres the card grid within the portal */
+.auth-portal-main {
+    display: grid;
+    place-items: center;
+    min-height: calc(100vh - 72px);
+    padding: 1.5rem;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 5 — SHARED TOP NAV  (.dash-nav)
+   Sticky white navbar used on dashboard, properties, heirs,
+   disputes, documents, faraid — every authenticated page.
+   Overrides any colour set by older page-level CSS below it.
+   ────────────────────────────────────────────────────────── */
+.dash-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 64px;
+    padding: 0 2rem;
+    background: #ffffff; /* Always white — overrides dark hero bleeds */
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+    /* Force brand/link/logout colours to be readable on white nav */
+    .dash-nav .nav-brand-name,
+    .dash-nav .nav-links a,
+    .dash-nav .btn-logout {
+        color: var(--text-primary) !important;
+    }
+
+    /* Blue square icon box in the nav */
+    .dash-nav .nav-logo-box {
+        background: var(--brand-primary) !important;
+        color: #fff !important;
+    }
+
+    /* "Miras" wordmark — bold dark text */
+    .dash-nav .nav-brand-name {
+        color: var(--text-primary) !important;
+        font-weight: 700;
+    }
+
+        /* Coloured portion of brand name (e.g. "Pro") */
+        .dash-nav .nav-brand-name span {
+            color: var(--brand-primary) !important;
+        }
+
+    /* Nav link items — muted until hovered/active */
+    .dash-nav .nav-links a {
+        color: var(--text-secondary) !important;
+        font-weight: 500;
+        transition: color var(--transition);
+    }
+
+        .dash-nav .nav-links a:hover,
+        .dash-nav .nav-links a.active {
+            color: var(--brand-primary) !important;
+        }
+
+    /* User name + role label in the top-right */
+    .dash-nav .user-info,
+    .dash-nav .user-info strong {
+        color: var(--text-primary) !important;
+    }
+
+        .dash-nav .user-info small {
+            color: var(--text-muted) !important;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+    /* Avatar circle — FIX: --brand-primary-light was undefined, causing fallback to no background */
+    .dash-nav .user-avatar {
+        background: var(--brand-primary-light) !important;
+        color: var(--brand-primary) !important;
+        border: 2px solid var(--brand-primary);
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 6 — REGISTER PAGE NAV
+   A lighter nav variant used on the registration page only
+   (white background, no user avatar).
+   ────────────────────────────────────────────────────────── */
+.reg-nav .nav-brand-name {
+    color: var(--text-primary) !important;
+}
+
+    .reg-nav .nav-brand-name span {
+        color: var(--brand-primary) !important;
+    }
+
+.reg-nav .nav-login-link {
+    color: var(--text-secondary) !important;
+    font-size: 14px;
+}
+
+    .reg-nav .nav-login-link a {
+        color: var(--brand-primary) !important;
+        font-weight: 600;
+    }
+
+/* Registration form panel heading and subtext */
+.reg-right .form-header h2 {
+    color: var(--text-primary);
+}
+
+.reg-right .form-header p {
+    color: var(--text-muted) !important;
+}
+
+/* Left marketing panel text on registration page */
+.reg-left .left-desc,
+.reg-left .step-content-sub {
+    color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.reg-left .left-title,
+.reg-left .step-content-title {
+    color: #fff !important;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 7 — PAGE HEADER / HERO BANNER
+   Used across Properties, Disputes, Documents, Faraid, Heirs.
+   Dark gradient strip at the top of each page.
+   ────────────────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1f2937 0%, #1e3a8a 55%, #006aff 100%) !important;
+    color: #f8fafc !important;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+    /* Force all text inside the hero to be light — overrides dark defaults */
+    .page-header h1, .page-header h2, .page-header h3,
+    .page-header p, .page-header span {
+        color: #f8fafc !important;
+    }
+
+    /* Specific overrides for pages that use .page-title / .page-sub classes */
+    .page-header .page-title,
+    .page-header .page-sub {
+        color: #f8fafc !important;
+    }
+
+.admin-main-wrap .page-header .page-title {
+    color: #f8fafc !important;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 8 — CARDS AND PANELS
+   Shared styling for stat-card, table-card, toolbar, panel.
+   Applied globally so all pages get consistent card appearance.
+   ────────────────────────────────────────────────────────── */
+.stat-card, .table-card, .toolbar, .panel, .admin-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition), box-shadow var(--transition);
+    will-change: transform; /* GPU-composite hint for smooth hover */
+}
+
+    /* Lift effect when user hovers over a card */
+    .stat-card:hover, .panel:hover, .admin-panel:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 9 — BUTTONS
+   Base button styles shared across all pages.
+   Page-level files may extend these but should not redefine them.
+   ────────────────────────────────────────────────────────── */
+
+/* Primary CTA — used for "Add Property", "Save", "Submit" etc. */
+.btn-brand, .btn-primary, .btn-save {
+    background: var(--brand-primary) !important;
+    color: #fff !important;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+    .btn-brand:hover, .btn-primary:hover, .btn-save:hover {
+        background: var(--brand-primary-dark) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(0, 106, 255, 0.3);
+    }
+
+/* Secondary / outline — "Cancel", "Back", row icon actions */
+.btn-secondary, .btn-outline, .icon-btn {
+    background: #fff;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+    .btn-outline:hover, .btn-secondary:hover, .icon-btn:hover {
+        border-color: var(--brand-primary);
+        color: var(--brand-primary);
+    }
+
+/* Keyboard focus ring — visible only for keyboard navigation (not mouse clicks) */
+:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 10 — FORMS
+   Shared styles for labels, inputs, textareas, selects.
+   Applied to all form elements site-wide.
+   ────────────────────────────────────────────────────────── */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+/* Field labels — bold, dark, above each input */
+.form-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* All interactive input elements — consistent border + background */
+.form-input, input, textarea, select {
+    color: var(--text-primary);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+    /* Focus ring on inputs — blue glow replaces default browser outline */
+    .form-input:focus, input:focus, textarea:focus, select:focus {
+        border-color: var(--brand-primary);
+        box-shadow: 0 0 0 3px rgba(0, 106, 255, 0.15);
+        outline: none;
+    }
+
+/* Small hint text below an input field */
+.form-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 11 — TABLES
+   Base table typography applied to all data tables.
+   ────────────────────────────────────────────────────────── */
+table {
+    color: var(--text-primary);
+}
+
+/* Column header row — lighter text, grey background */
+th {
+    color: var(--text-secondary);
+    background: #f1f5f9;
+    font-size: 12px;
+}
+
+/* Data cells */
+td {
+    color: var(--text-primary);
+    border-color: #e2e8f0;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 12 — PILLS AND BADGES
+   Status indicators used in tables, cards, and headers.
+
+   FIX: Multiple badge/pill classes previously used
+   color: #006aff (blue) on green backgrounds — semantically
+   wrong and produced ~3:1 contrast (fails WCAG AA 4.5:1).
+   All corrected to proper semantic colors below.
+   ────────────────────────────────────────────────────────── */
+.badge, .pill {
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+/* Info / informational — blue */
+.badge-blue, .pill-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Success / approved / active — green
+   FIX: was background rgba(76,175,125,0.15) + color #006aff (blue on green) */
+.badge-green, .pill-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+/* Warning / pending — amber */
+.badge-amber, .pill-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Danger / rejected / overdue — red */
+.badge-red, .pill-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Neutral / closed / archived — grey */
+.badge-gray, .pill-neutral {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* ── Page-level status pills (used in tables across pages) ─
+   FIX: pill-active and pill-resolved used blue #006aff text
+   on green/blue tint backgrounds — wrong semantic + contrast fail */
+.pill-active {
+    background: #dcfce7;
+    color: #15803d;
+}
+/* Active record          */
+.pill-resolved {
+    background: #dcfce7;
+    color: #15803d;
+}
+/* Resolved dispute       */
+.pill-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+/* Awaiting action        */
+.pill-closed {
+    background: #f1f5f9;
+    color: #475569;
+}
+/* Archived / closed      */
+.pill-review {
+    background: #dbeafe;
+    color: #1e40af;
+}
+/* Under review           */
+.pill-residential {
+    background: #dcfce7;
+    color: #15803d;
+}
+/* Property type          */
+.pill-commercial {
+    background: #fef3c7;
+    color: #92400e;
+}
+/* Property type          */
+.pill-digital {
+    background: #dbeafe;
+    color: #1e40af;
+}
+/* Property type          */
+.pill-agricultural {
+    background: #ecfccb;
+    color: #3f6212;
+}
+/* Property type          */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 13 — ADMIN LAYOUT
+   Flex wrapper for the two-column admin view:
+   sidebar on the left, main content on the right.
+   ────────────────────────────────────────────────────────── */
+
+/* Right-side content area next to the admin sidebar */
+.admin-main-wrap {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface-muted);
+}
+
+/* Left sidebar — dark gradient panel */
+.admin-sidebar {
+    width: 250px;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+    color: #e2e8f0;
+}
+
+/* Sidebar nav link — inactive state */
+.sb-item {
+    color: #cbd5e1;
+    transition: var(--transition);
+}
+
+    /* Sidebar nav link — hover and active states */
+    .sb-item:hover,
+    .sb-item.active {
+        color: #fff;
+        background: rgba(0, 106, 255, .18);
+        border-left-color: #60a5fa;
+    }
+
+/* Sidebar logo and user name — always white */
+.sb-logo-title, .sb-user-name {
+    color: #f8fafc;
+}
+
+/* Sidebar role label — light blue tint for legibility on dark bg */
+.sb-user-role {
+    color: #93c5fd;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 14 — DARK SECTION READABILITY
+   Footer, feature sections, and marketing panels use dark
+   backgrounds. These rules ensure text and links stay readable.
+   ────────────────────────────────────────────────────────── */
+footer, .features-section, .faraid-section, .intro-visual {
+    color: #e2e8f0;
+}
+
+    footer a, .features-section a, .faraid-section a, .intro-visual a {
+        color: #93c5fd;
+    }
+
+/* Landing page footer specific overrides */
+.landing-page footer .nav-brand-name,
+.landing-page footer .footer-brand p,
+.landing-page footer .footer-col h4,
+.landing-page footer .footer-col a {
+    color: #e2e8f0 !important;
+}
+
+    .landing-page footer .footer-col a:hover {
+        color: #93c5fd !important;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 15 — COMPLIANCE BANNERS
+   Shown on admin console when users have missing documents
+   or compliance issues. Amber left-border, warm background.
+   ────────────────────────────────────────────────────────── */
+.compliance-banner {
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-left: 4px solid var(--warning); /* Amber accent left edge */
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+    .compliance-banner h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+        color: #9a3412;
+    }
+
+    .compliance-banner ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        color: #7c2d12;
+    }
+
+    .compliance-banner li.error {
+        color: #b91c1c;
+        font-weight: 500;
+    }
+    /* Hard fail — red  */
+    .compliance-banner li.warning {
+        color: #92400e;
+    }
+/* Soft warn — amber */
+
+/* Danger variant banner — red tint, used for critical alerts */
+.alert-banner-danger {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 16 — ADMIN TABLE + COMPLIANCE USER CARDS
+   Admin panel uses a slightly different table structure
+   from the standard data tables in page-level files.
+   ────────────────────────────────────────────────────────── */
+.admin-panel {
+    padding: 1.25rem;
+}
+
+/* Admin-specific table — used in compliance views */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .admin-table th,
+    .admin-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        color: var(--text-primary);
+    }
+
+    .admin-table th {
+        background: #f1f5f9;
+        color: var(--text-secondary);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+/* Compliance card — one per user, shows their status */
+.compliance-user-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: #fff;
+}
+
+    .compliance-user-card.warn {
+        border-left: 4px solid var(--warning);
+    }
+    /* Has issues     */
+    .compliance-user-card.ok {
+        border-left: 4px solid var(--success);
+    }
+/* Fully compliant */
+.compliance-user-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.compliance-list {
+    margin: 0.75rem 0 0;
+    padding-left: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.compliance-item.error {
+    color: #b91c1c;
+}
+/* Missing required document  */
+.compliance-item.warning {
+    color: #92400e;
+}
+/* Document expiring soon     */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 17 — LOADING SPINNER
+   Used while API data is being fetched.
+   ────────────────────────────────────────────────────────── */
+.loading-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.spinner {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid #e2e8f0; /* Light grey track */
+    border-top-color: var(--brand-primary); /* Blue rotating segment */
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 18 — ANIMATION SUPPRESSION
+   Static gradient sections must not animate or shift colour.
+   Prevents the blue-flicker bug on page load.
+   ────────────────────────────────────────────────────────── */
+.landing-page .hero,
+.landing-page .intro-visual,
+.landing-page .faraid-section,
+.reg-left,
+.page-header {
+    background-size: auto !important;
+    animation: none !important; /* No gradient shift on these hero sections */
+}
+
+.auth-portal {
+    animation: none !important;
+}
+
+/* Nav bars are always static — no animation */
+.landing-nav, .reg-nav, .dash-nav, .admin-sidebar {
+    animation: none !important;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 19 — REDUCED MOTION ACCESSIBILITY
+   Respects the OS/browser "reduce motion" preference.
+   Disables all transitions and animations for users who
+   are sensitive to motion (vestibular disorders etc.).
+   ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 20 — RESPONSIVE BREAKPOINTS
+   Global layout adjustments for smaller viewports.
+   ────────────────────────────────────────────────────────── */
+
+/* Tablet — auth choice cards stack to single column */
+@media (max-width: 768px) {
+    .auth-choice-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Tablet — nav padding reduced, sidebar narrows */
+@media (max-width: 900px) {
+    .dash-nav {
+        padding: 0 1rem;
+    }
+
+    .admin-sidebar {
+        width: 220px;
+    }
+}

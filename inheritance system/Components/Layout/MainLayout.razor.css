@@ -1,0 +1,73 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+    background: #f8fafc;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+}
+
+.top-row {
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: #ffffff;
+    border-bottom: 1px solid #d1d5db;
+}
+
+.top-row ::deep a,
+.top-row ::deep .btn-link {
+    color: #334155;
+    margin-left: 1rem;
+    text-decoration: none;
+}
+
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+    color: #006aff;
+}
+
+@media (min-width: 641px) {
+    .page { flex-direction: row; }
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+    .top-row {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+}
+
+#blazor-error-ui {
+    color-scheme: light;
+    background: #fff7ed;
+    color: #7c2d12;
+    border-top: 1px solid #fdba74;
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    bottom: 0;
+    padding: .7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.4rem;
+}

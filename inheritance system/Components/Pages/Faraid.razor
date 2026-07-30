@@ -1,0 +1,244 @@
+@page "/faraid"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.HeirService HeirSvc
+@inject inheritance_system.Services.FaraidService FaraidSvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a class="active" href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+        
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<!-- HEADER -->
+<div class="page-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <h1>Faraid <span>Calculator</span></h1>
+            <p>Automatic Sharia-compliant inheritance shares (Hanafi school · Muslim Family Laws Ordinance, 1961)</p>
+        </div>
+    </div>
+</div>
+
+<main class="page-main">
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert-success">&#x2713; @successMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    <!-- Property selector -->
+    <div class="selector-card">
+        <label>Property:</label>
+        <select @bind="selectedPropertyId" @bind:after="OnPropertyChanged">
+            <option value="0">-- Select a property --</option>
+            @foreach (var po in propertyOptions)
+            {
+                <option value="@po.PropertyId">@po.Title @(string.IsNullOrEmpty(po.Location) ? "" : " — " + po.Location)</option>
+            }
+        </select>
+        @if (result != null && result.Shares.Any(s => !s.IsExcluded))
+        {
+            <button class="btn-save" @onclick="ApplyToHeirs" disabled="@isApplying">
+                @(isApplying ? "Applying..." : "Apply to Heirs")
+            </button>
+        }
+    </div>
+
+    @if (selectedPropertyId == 0)
+    {
+        <div class="empty-state">
+            <div class="em-icon">&#x2696;</div>
+            <h3>Select a property</h3>
+            <p>Choose a property above to compute Sharia-compliant inheritance shares for its registered heirs.</p>
+        </div>
+    }
+    else if (result == null)
+    {
+        <div class="empty-state"><p>Computing...</p></div>
+    }
+    else if (result.Shares.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="em-icon">&#x1F465;</div>
+            <h3>No heirs to compute</h3>
+            <p>Please add heirs for this property from the Heir Management page first.</p>
+        </div>
+    }
+    else
+    {
+        <div class="result-card">
+            <div class="result-head">
+                <div>
+                    <h2>@result.PropertyTitle</h2>
+                    <div class="est">Estate Value: PKR @FormatPkr(result.EstimatedValue)</div>
+                </div>
+                <div class="badges">
+                    @if (result.AwlApplied)
+                    {
+                        <span class="badge awl">Awl Applied</span>
+                    }
+                    @if (result.RaddApplied)
+                    {
+                        <span class="badge radd">Radd Applied</span>
+                    }
+                    <span class="badge total">Total: @result.TotalPercent.ToString("0.##")%</span>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Heir</th>
+                        <th>Relation</th>
+                        <th>Quranic Share</th>
+                        <th>Percent</th>
+                        <th>Amount (PKR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in result.Shares)
+                    {
+                        <tr class="@(s.IsExcluded ? "row-excluded" : "")">
+                            <td>
+                                <div class="name-cell">@s.HeirName</div>
+                                @if (s.IsExcluded && !string.IsNullOrEmpty(s.ExclusionReason))
+                                {
+                                    <div class="reason">@s.ExclusionReason</div>
+                                }
+                            </td>
+                            <td>@s.Relation</td>
+                            <td><span class="frac">@s.FractionLabel</span></td>
+                            <td><span class="pct">@s.Percent.ToString("0.##")%</span></td>
+                            <td><span class="amt">@FormatPkr(s.Amount)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (result.Notes.Any())
+        {
+            <div class="notes-card">
+                <h4>Calculation Notes</h4>
+                <ul>
+                    @foreach (var n in result.Notes)
+                    {
+                        <li>· @n</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This calculator implements the standard rules of Faraid per the Hanafi school
+            (the basis of Pakistan's Muslim Family Laws Ordinance, 1961). It covers the most common cases
+            including spouses, parents, children, grandchildren, grandparents, and siblings with proper exclusion
+            (Hajb), Awl, Radd, and Asabah rules. For unusual or disputed cases (e.g. *Mushtarakah*, *Akdariyah*,
+            distant kindred / *Dhawi al-Arham*), please consult a qualified Islamic scholar before final distribution.
+        </div>
+    }
+</main>
+
+@code {
+    private List<inheritance_system.Services.PropertyOption> propertyOptions = new();
+    private int selectedPropertyId = 0;
+    private inheritance_system.Services.FaraidResult? result;
+    private bool isApplying = false;
+    private string successMessage = "";
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        propertyOptions = await HeirSvc.GetPropertyOptionsAsync(CurrentUser.UserId);
+    }
+
+    private async Task OnPropertyChanged()
+    {
+        successMessage = ""; errorMessage = "";
+        if (selectedPropertyId == 0) { result = null; return; }
+        try
+        {
+            result = await FaraidSvc.ComputeAsync(selectedPropertyId, CurrentUser.UserId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not compute shares. Please ensure the database is reachable.";
+            Console.WriteLine($"FARAID ERROR: {ex.Message}");
+        }
+    }
+
+    private async Task ApplyToHeirs()
+    {
+        isApplying = true;
+        try
+        {
+            var (ok, msg) = await FaraidSvc.ApplyToHeirsAsync(selectedPropertyId, CurrentUser.UserId);
+            if (ok) successMessage = msg; else errorMessage = msg;
+        }
+        finally { isApplying = false; }
+    }
+
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string FormatPkr(decimal v)
+    {
+        if (v >= 10_000_000m) return $"{v / 10_000_000m:0.##} Crore";
+        if (v >= 100_000m) return $"{v / 100_000m:0.##} Lakh";
+        return v.ToString("N0");
+    }
+}

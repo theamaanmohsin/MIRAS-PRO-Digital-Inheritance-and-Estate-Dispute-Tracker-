@@ -1,0 +1,265 @@
+@page "/admin/documents"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ComplianceService ComplianceSvc
+@inject AdminService AdminSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>All Documents — Admin</PageTitle>
+
+@if (!_ready)
+{
+    <div class="loading-wrap"><div class="spinner"></div></div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">All Documents</h1>
+            <p class="page-sub">View, approve, reject and delete documents uploaded by all users</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert @(_message.StartsWith("✓") ? "alert-success" : "alert-error")" style="margin-bottom:1rem;">@_message</div>
+    }
+
+    <!-- Filter toolbar -->
+    <div class="toolbar" style="margin-bottom:1rem;">
+        <input class="form-input" style="max-width:320px;" placeholder="Search file, property, owner..."
+               @bind="_search" @bind:event="oninput" @onkeyup="Reload" />
+        <select class="form-input" style="max-width:180px;" @bind="_statusFilter" @bind:after="Reload">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+        <button class="btn btn-primary" type="button" @onclick="Reload">Search</button>
+        <span class="result-count">@_filtered.Count document(s)</span>
+    </div>
+
+    <div class="admin-panel">
+        @if (!_filtered.Any())
+        {
+            <div class="empty-state">No documents found.</div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="admin-table data-table">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Property</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _filtered)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@d.FileName</strong>
+                                    <div style="font-size:11px;color:var(--text-muted);">@d.FileType</div>
+                                </td>
+                                <td>
+                                    @d.PropertyTitle
+                                    <div style="font-size:11px;color:var(--text-muted);">@d.Location</div>
+                                </td>
+                                <td>
+                                    @d.OwnerName
+                                    <div style="font-size:11px;color:var(--text-muted);">@d.OwnerEmail</div>
+                                </td>
+                                <td>
+                                    <span class="badge @StatusBadge(d.Status)">@d.Status</span>
+                                    @if (!string.IsNullOrEmpty(d.AdminNotes))
+                                    {
+                                        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">@d.AdminNotes</div>
+                                    }
+                                </td>
+                                <td style="white-space:nowrap;">@d.UploadedAt.ToString("d MMM yyyy HH:mm")</td>
+                                <td>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                        <a class="btn btn-outline" href="@d.FilePath" target="_blank" rel="noopener">View</a>
+                                        @if (d.Status != "Approved")
+                                        {
+                                            <button class="btn btn-success" @onclick="() => OpenApprove(d)">Approve</button>
+                                        }
+                                        @if (d.Status != "Rejected")
+                                        {
+                                            <button class="btn btn-warning" @onclick="() => OpenReject(d)">Reject</button>
+                                        }
+                                        <button class="btn btn-danger" @onclick="() => OpenDelete(d)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+<!-- APPROVE MODAL -->
+@if (_showApproveModal && _target != null)
+{
+    <div class="adm-modal-overlay" @onclick="CloseModals">
+        <div class="adm-modal" @onclick:stopPropagation="true">
+            <div class="adm-modal-header">
+                <h3>Approve Document</h3>
+                <button class="adm-modal-close" @onclick="CloseModals">&#x2715;</button>
+            </div>
+            <div class="adm-modal-body">
+                <p style="margin-bottom:1rem;">Approving <strong>@_target.FileName</strong> uploaded by <strong>@_target.OwnerName</strong>.</p>
+                <div class="form-group">
+                    <label class="form-label">Notes (optional)</label>
+                    <textarea class="form-input" rows="3" placeholder="Add a note for the user..." @bind="_notesInput"></textarea>
+                </div>
+            </div>
+            <div class="adm-modal-footer">
+                <button class="btn btn-outline" @onclick="CloseModals">Cancel</button>
+                <button class="btn btn-success" @onclick="ConfirmApprove" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Approve")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- REJECT MODAL -->
+@if (_showRejectModal && _target != null)
+{
+    <div class="adm-modal-overlay" @onclick="CloseModals">
+        <div class="adm-modal" @onclick:stopPropagation="true">
+            <div class="adm-modal-header">
+                <h3>Reject Document</h3>
+                <button class="adm-modal-close" @onclick="CloseModals">&#x2715;</button>
+            </div>
+            <div class="adm-modal-body">
+                <p style="margin-bottom:1rem;">Rejecting <strong>@_target.FileName</strong> uploaded by <strong>@_target.OwnerName</strong>.</p>
+                <div class="form-group">
+                    <label class="form-label">Reason *</label>
+                    <textarea class="form-input" rows="3" placeholder="Reason for rejection..." @bind="_notesInput"></textarea>
+                </div>
+            </div>
+            <div class="adm-modal-footer">
+                <button class="btn btn-outline" @onclick="CloseModals">Cancel</button>
+                <button class="btn btn-danger" @onclick="ConfirmReject" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Reject")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- DELETE MODAL -->
+@if (_showDeleteModal && _target != null)
+{
+    <div class="adm-modal-overlay" @onclick="CloseModals">
+        <div class="adm-modal" style="max-width:420px;" @onclick:stopPropagation="true">
+            <div class="adm-modal-header">
+                <h3>Delete Document</h3>
+                <button class="adm-modal-close" @onclick="CloseModals">&#x2715;</button>
+            </div>
+            <div class="adm-modal-body" style="text-align:center;">
+                <div style="font-size:36px;margin-bottom:1rem;">🗑️</div>
+                <p>Permanently delete <strong>@_target.FileName</strong>?<br/>This cannot be undone.</p>
+            </div>
+            <div class="adm-modal-footer">
+                <button class="btn btn-outline" @onclick="CloseModals">Cancel</button>
+                <button class="btn btn-danger" @onclick="ConfirmDelete" disabled="@_saving">
+                    @(_saving ? "Deleting..." : "Delete")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    bool _ready;
+    string _search = "";
+    string _statusFilter = "";
+    string _message = "";
+    bool _saving;
+    List<AdminDocumentRow> _docs = new();
+    List<AdminDocumentRow> _filtered = new();
+
+    // Modal state
+    AdminDocumentRow? _target;
+    bool _showApproveModal;
+    bool _showRejectModal;
+    bool _showDeleteModal;
+    string _notesInput = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsAdmin) { Nav.NavigateTo("/login/admin", forceLoad: true); return; }
+        await Reload();
+        _ready = true;
+    }
+
+    async Task Reload()
+    {
+        _docs = await ComplianceSvc.GetAllDocumentsForAdminAsync(_search);
+        _filtered = string.IsNullOrEmpty(_statusFilter)
+            ? _docs
+            : _docs.Where(d => d.Status == _statusFilter).ToList();
+    }
+
+    void OpenApprove(AdminDocumentRow d) { _target = d; _notesInput = ""; _showApproveModal = true; }
+    void OpenReject(AdminDocumentRow d)  { _target = d; _notesInput = ""; _showRejectModal = true; }
+    void OpenDelete(AdminDocumentRow d)  { _target = d; _showDeleteModal = true; }
+    void CloseModals() { _showApproveModal = _showRejectModal = _showDeleteModal = false; _target = null; }
+
+    async Task ConfirmApprove()
+    {
+        if (_target == null) return;
+        _saving = true;
+        var (ok, msg) = await ComplianceSvc.ApproveDocumentAsync(_target.DocumentId, CurrentUser.UserId, CurrentUser.FullName, _notesInput);
+        if (ok) await AdminSvc.LogAsync(CurrentUser.UserId, CurrentUser.FullName, "Doc_Approved", "Document", _target.DocumentId, _target.FileName);
+        _message = ok ? $"✓ {msg}" : $"⚠ {msg}";
+        CloseModals();
+        await Reload();
+        _saving = false;
+    }
+
+    async Task ConfirmReject()
+    {
+        if (_target == null) return;
+        if (string.IsNullOrWhiteSpace(_notesInput)) { _message = "⚠ Please provide a rejection reason."; return; }
+        _saving = true;
+        var (ok, msg) = await ComplianceSvc.RejectDocumentAsync(_target.DocumentId, CurrentUser.UserId, CurrentUser.FullName, _notesInput);
+        if (ok) await AdminSvc.LogAsync(CurrentUser.UserId, CurrentUser.FullName, "Doc_Rejected", "Document", _target.DocumentId, _target.FileName);
+        _message = ok ? $"✓ {msg}" : $"⚠ {msg}";
+        CloseModals();
+        await Reload();
+        _saving = false;
+    }
+
+    async Task ConfirmDelete()
+    {
+        if (_target == null) return;
+        _saving = true;
+        var (ok, msg) = await ComplianceSvc.DeleteDocumentByAdminAsync(_target.DocumentId);
+        if (ok) await AdminSvc.LogAsync(CurrentUser.UserId, CurrentUser.FullName, "Doc_Deleted", "Document", _target.DocumentId, _target.FileName);
+        _message = ok ? $"✓ {msg}" : $"⚠ {msg}";
+        CloseModals();
+        await Reload();
+        _saving = false;
+    }
+
+    static string StatusBadge(string status) => status switch
+    {
+        "Approved" => "badge-green",
+        "Rejected" => "badge-red",
+        _ => "badge-amber"
+    };
+}

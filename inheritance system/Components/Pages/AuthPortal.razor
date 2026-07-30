@@ -1,0 +1,44 @@
+@page "/login"
+@page "/auth"
+@layout EmptyLayout
+
+<PageTitle>Sign In — MirasPro</PageTitle>
+
+<div class="auth-portal">
+    <nav class="auth-portal-nav">
+        <a href="/" class="nav-brand" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+            <div style="width:36px;height:36px;background:var(--brand-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">م</div>
+            <span style="font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:#f0e6c8;letter-spacing:-0.02em;">Miras<span style="color:#f5c842;">Pro</span></span>
+        </a>
+        <a href="/register" style="color:rgba(255,255,255,0.8);font-size:0.875rem;">Create account</a>
+    </nav>
+
+    <main class="auth-portal-main">
+        <div class="auth-portal-card-wrap">
+            <h1 class="auth-portal-title">Welcome to MirasPro</h1>
+            <p class="auth-portal-sub">Pakistan's digital inheritance &amp; property management platform. Choose how you want to sign in.</p>
+
+            <div class="auth-choice-grid">
+                <a href="/login/user" class="auth-choice-card user">
+                    <div class="auth-choice-icon">👤</div>
+                    <h3>Login as User</h3>
+                    <p>Register and manage your properties, heirs, documents, and submit dispute applications for review.</p>
+                    <span class="auth-choice-cta">Continue as User →</span>
+                </a>
+
+                <a href="/login/admin" class="auth-choice-card admin">
+                    <div class="auth-choice-icon">🛡</div>
+                    <h3>Login as Admin</h3>
+                    <p>Full administration — FRC verification, case &amp; dispute review, user/property management, and security settings.</p>
+                    <span class="auth-choice-cta">Continue as Admin →</span>
+                </a>
+            </div>
+
+            <p style="margin-top:2rem;color:rgba(255,255,255,0.85);font-size:0.9rem;">
+                Need an account?
+                <a href="/register" style="color:#f5c842;font-weight:600;text-decoration:underline;">Register here</a>
+                (select Administrator + security key for admin)
+            </p>
+        </div>
+    </main>
+</div>

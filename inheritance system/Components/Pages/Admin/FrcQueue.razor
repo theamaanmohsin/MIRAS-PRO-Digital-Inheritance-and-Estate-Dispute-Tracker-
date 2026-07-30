@@ -1,0 +1,217 @@
+@page "/admin/frc-queue"
+@layout AdminLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using InheritanceSystem.Models
+@using inheritance_system.Services
+@inject FrcService FrcSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+
+<PageTitle>FRC Review Queue</PageTitle>
+
+
+
+@if (!_ready)
+{
+    <div class="loading-wrap"><div class="spinner"></div></div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">FRC Review Queue</h1>
+            <p class="page-sub">Approve or reject Family Registration Certificate submissions</p>
+        </div>
+        <a href="/admin/console" class="btn btn-outline">← Console</a>
+    </div>
+
+    <div class="tabs">
+        <button class="tab @(_filter == null ? "active" : "")"
+                @onclick='() => SetFilter(null)'>
+            All <span class="tab-count">@(_pending + _approved + _rejected)</span>
+        </button>
+        <button class="tab @(_filter == "Pending" ? "active" : "")"
+                @onclick='() => SetFilter("Pending")'>
+            Pending <span class="tab-count tab-amber">@_pending</span>
+        </button>
+        <button class="tab @(_filter == "Approved" ? "active" : "")"
+                @onclick='() => SetFilter("Approved")'>
+            Approved <span class="tab-count tab-green">@_approved</span>
+        </button>
+        <button class="tab @(_filter == "Rejected" ? "active" : "")"
+                @onclick='() => SetFilter("Rejected")'>
+            Rejected <span class="tab-count tab-red">@_rejected</span>
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert-banner @(_message.Contains("error") || _message.Contains("Error") ? "alert-err" : "")">
+            @_message
+        </div>
+    }
+
+    @if (!_list.Any())
+    {
+        <div class="empty-state">No submissions in this category.</div>
+    }
+    else
+    {
+        <div class="frc-grid">
+            @foreach (var frc in _list)
+            {
+                <div class="frc-card status-@frc.Status.ToLower()">
+                    <div class="frc-card-hdr">
+                        <div class="frc-avatar">@(frc.User?.FullName?.FirstOrDefault() ?? 'U')</div>
+                        <div style="flex:1;min-width:0">
+                            <div class="frc-name">@frc.User?.FullName</div>
+                            <div class="frc-email">@frc.User?.Email</div>
+                        </div>
+                        <span class="badge @frc.StatusBadgeClass()">@frc.Status</span>
+                    </div>
+                    <div class="frc-body">
+                        <div class="frc-row">
+                            <span class="frc-lbl">FRC No.</span>
+                            <span class="frc-mono">@frc.FrcNumber</span>
+                        </div>
+                        <div class="frc-row">
+                            <span class="frc-lbl">Document</span>
+                            <a href="@frc.DocumentFilePath" target="_blank" class="frc-doc-link">
+                                @frc.OriginalFileName (@frc.FileSizeDisplay())
+                            </a>
+                        </div>
+                        <div class="frc-row">
+                            <span class="frc-lbl">Submitted</span>
+                            <span>@frc.UploadedAt.ToString("d MMM yyyy, HH:mm")</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(frc.AdminNotes))
+                        {
+                            <div class="frc-note">@frc.AdminNotes</div>
+                        }
+                    </div>
+                    @if (frc.IsPending())
+                    {
+                        <div class="frc-actions">
+                            <a href="/admin/frc-detail/@frc.Id" class="btn btn-sm btn-outline">
+                                Full Review
+                            </a>
+                            <button class="btn btn-sm btn-danger-outline"
+                                    @onclick="() => OpenReject(frc.Id)">
+                                Reject
+                            </button>
+                            <button class="btn btn-sm btn-teal"
+                                    @onclick="() => QuickApprove(frc.Id)">
+                                ✓ Approve
+                            </button>
+                        </div>
+                    }
+                    else if (frc.IsApproved())
+                    {
+                        <div class="frc-approved-footer">
+                            ✓ Approved · Profile locked
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (_showRejectModal)
+    {
+        <div class="frc-modal-overlay">
+            <div class="frc-modal">
+                <div class="frc-modal-hdr">
+                    <h3>Reject FRC Submission</h3>
+                    <button class="modal-close" @onclick="CloseReject">✕</button>
+                </div>
+                <div class="frc-modal-body">
+                    <div class="reject-warn">
+                        ⚠ The citizen will be notified and can resubmit with corrections.
+                    </div>
+                    <div>
+                        <label class="form-label">Reason for Rejection *</label>
+                        <textarea class="form-textarea" rows="4"
+                                  placeholder="Explain clearly what needs to be corrected…"
+                                  @bind="_rejectNotes"></textarea>
+                    </div>
+                </div>
+                <div class="frc-modal-footer">
+                    <button class="btn btn-outline btn-sm" @onclick="CloseReject">Cancel</button>
+                    <button class="btn btn-danger btn-sm" @onclick="ConfirmReject">
+                        Confirm Rejection
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    bool _ready = false;
+    string? _filter = "Pending";
+    [SupplyParameterFromQuery(Name = "filter")]
+    [Parameter] public string? FilterParam { get; set; }
+    string _message = "";
+    bool _showRejectModal = false;
+    int _rejectTargetId;
+    string _rejectNotes = "";
+    int _pending, _approved, _rejected;
+    List<FrcDocument> _list = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+
+        if (!CurrentUser.IsAdmin)
+        {
+            Nav.NavigateTo("/login/admin", forceLoad: true);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(FilterParam))
+            _filter = FilterParam;
+
+        await LoadAsync();
+        _ready = true;
+    }
+
+    async Task LoadAsync()
+    {
+        _pending = await FrcSvc.CountByStatusAsync("Pending");
+        _approved = await FrcSvc.CountByStatusAsync("Approved");
+        _rejected = await FrcSvc.CountByStatusAsync("Rejected");
+        _list = await FrcSvc.GetAllAsync(_filter);
+    }
+
+    async Task SetFilter(string? f)
+    {
+        _filter = f;
+        await LoadAsync();
+    }
+
+    async Task QuickApprove(int id)
+    {
+        var (ok, msg) = await FrcSvc.ApproveAsync(
+            id, CurrentUser.UserId, CurrentUser.FullName, null);
+        _message = msg;
+        await LoadAsync();
+    }
+
+    void OpenReject(int id)
+    {
+        _rejectTargetId = id;
+        _rejectNotes = "";
+        _showRejectModal = true;
+    }
+
+    void CloseReject() => _showRejectModal = false;
+
+    async Task ConfirmReject()
+    {
+        var (ok, msg) = await FrcSvc.RejectAsync(
+            _rejectTargetId, CurrentUser.UserId, CurrentUser.FullName, _rejectNotes);
+        _message = msg;
+        _showRejectModal = false;
+        await LoadAsync();
+    }
+}

@@ -1,0 +1,721 @@
+/* ============================================================
+   FILE: adminconsole.css
+   PURPOSE: Admin overview dashboard — visible only to admins.
+            Shows system-wide stats (total users, pending FRCs,
+            disputes, audit log), a pending FRC mini-list, and
+            a full audit-log table.
+   DEPENDS ON: miras-theme.css
+   ============================================================ */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 1 — BASE
+   ────────────────────────────────────────────────────────── */
+body {
+    font-family: 'Source Sans 3', Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 2 — PAGE HEADER
+   Flat header row (no hero gradient here — admin uses the
+   sidebar layout, not a full-width hero strip).
+   Contains page title, subtitle, and action buttons.
+   ────────────────────────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 1.75rem;
+    animation: fadeInUp 0.4s var(--ease-out) both;
+}
+
+/* "Admin Console" — large serif title */
+.page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green-dark);
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+}
+
+/* "System overview" subtitle below title */
+.page-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 3 — BUTTONS
+   Three button variants used in the admin console header.
+   ────────────────────────────────────────────────────────── */
+
+/* Base button — shared padding, font, and transition */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: opacity 0.18s, transform 0.18s var(--ease-out), box-shadow 0.18s;
+}
+
+/* Gold gradient button — "Export Report" */
+.btn-gold {
+    background: linear-gradient(135deg, #c9a84c, #a8882a);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(201,168,76,0.3);
+}
+
+    .btn-gold:hover {
+        opacity: 0.88;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(201,168,76,0.4);
+    }
+
+/* Solid blue primary button — "Review All" */
+.btn-primary {
+    background: var(--green-primary);
+    color: #fff;
+}
+
+    .btn-primary:hover {
+        background: var(--green-mid);
+        transform: translateY(-1px);
+    }
+
+/* White pill badge inside a button — shows a count number */
+.btn-badge {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 4 — ALERT BANNER
+   Amber warning strip shown when pending FRCs need review.
+   Has a pulsing dot to draw attention.
+   ────────────────────────────────────────────────────────── */
+.alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fffbeb;
+    border: 1px solid var(--amber);
+    border-left: 4px solid #c9a84c; /* Thicker gold left accent */
+    border-radius: 10px;
+    padding: 13px 18px;
+    margin-bottom: 1.5rem;
+    font-size: 14px;
+    color: var(--green-dark);
+    animation: slideDown 0.35s var(--ease-out) both; /* Drops in from above */
+}
+
+/* Animated gold dot — pulses to indicate urgency */
+.alert-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+    animation: pulse 1.8s ease-out infinite;
+}
+
+/* Expanding ring keyframe — defined in miras-theme.css */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(201,168,76,0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(201,168,76,0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(201,168,76,0);
+    }
+}
+
+/* "View all →" link pushed to the far right */
+.alert-link {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 13px;
+    color: #a8882a;
+    text-decoration: none;
+}
+
+    .alert-link:hover {
+        text-decoration: underline;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 5 — STATS GRID
+   4 summary cards for the admin: Total Users, Pending FRCs,
+   Open Disputes, Audit Events.
+   Each has a unique coloured top-bar via modifier classes.
+   ────────────────────────────────────────────────────────── */
+
+/* 4-column grid — collapses to 2 on tablet */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem;
+    margin-bottom: 1.75rem;
+}
+
+/* Individual stat card */
+.stat-card {
+    background: #fff;
+    border: 1px solid var(--green-border);
+    border-radius: 14px;
+    padding: 1.4rem;
+    box-shadow: 0 4px 16px rgba(26,61,43,0.05);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.22s var(--ease-out), box-shadow 0.22s;
+    will-change: transform;
+    animation: fadeInUp 0.45s var(--ease-out) both;
+}
+    /* Staggered entry — each card floats in after the previous */
+    .stat-card:nth-child(1) {
+        animation-delay: 0.06s;
+    }
+
+    .stat-card:nth-child(2) {
+        animation-delay: 0.12s;
+    }
+
+    .stat-card:nth-child(3) {
+        animation-delay: 0.18s;
+    }
+
+    .stat-card:nth-child(4) {
+        animation-delay: 0.24s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 28px rgba(26,61,43,0.10);
+    }
+
+    /* Thin coloured bar across the top of each card */
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
+
+.stat-navy::before {
+    background: linear-gradient(90deg, #2a2a33, #006aff);
+}
+/* Users card    */
+.stat-gold::before {
+    background: linear-gradient(90deg, #c9a84c, #f5d780);
+}
+/* FRC card      */
+.stat-amber::before {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+/* Disputes card */
+.stat-red::before {
+    background: linear-gradient(90deg, #c0392b, #e74c3c);
+}
+/* Alerts card   */
+
+/* Coloured square icon container inside each card */
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    background: var(--green-pale);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 0.85rem;
+}
+
+.stat-gold .stat-icon {
+    background: var(--gold-light);
+}
+/* Warm gold tint   */
+.stat-amber .stat-icon {
+    background: #fef3c7;
+}
+/* Amber tint       */
+.stat-red .stat-icon {
+    background: #fbeae6;
+}
+/* Red tint         */
+
+/* Large bold number — "142", "18" etc. */
+.stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+}
+
+/* Small uppercase label — "TOTAL USERS" */
+.stat-lbl {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-soft);
+    margin-top: 5px;
+}
+
+/* Trend text — "+3 this week" */
+.stat-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 6 — PANELS GRID
+   Two-column layout below the stats:
+   Left: Pending FRC mini-list
+   Right: Audit log table
+   ────────────────────────────────────────────────────────── */
+.panels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 1.25rem;
+}
+
+/* Individual white panel card */
+.panel {
+    background: #fff;
+    border: 1px solid var(--green-border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 16px rgba(26,61,43,0.04);
+    animation: fadeInUp 0.45s var(--ease-out) 0.25s both;
+}
+
+/* Panel top row — title on left, "View all" link on right */
+.panel-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--green-border);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+}
+
+.panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.panel-link {
+    font-size: 13px;
+    color: var(--green-mid);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+    .panel-link:hover {
+        text-decoration: underline;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 7 — BADGES
+   FIX: badge-green previously used color: #006aff (blue) on a
+   green background — semantically wrong and poor contrast (~3:1).
+   Corrected to proper green text #15803d on green tint.
+   ────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+}
+
+.badge-blue {
+    background: #dbeafe;
+    color: #1e40af;
+}
+/* Informational — blue   */
+.badge-green {
+    background: #dcfce7;
+    color: #15803d;
+}
+/* Approved / active — green (FIX: was blue text) */
+.badge-amber {
+    background: #fef3c7;
+    color: #92400e;
+}
+/* Pending / warning      */
+.badge-red {
+    background: #fee2e2;
+    color: #991b1b;
+}
+/* Rejected / danger      */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 8 — FRC MINI ROWS
+   Compact list of pending FRC (Financial Record Certificate)
+   applications inside the left panel.
+   ────────────────────────────────────────────────────────── */
+
+/* Single FRC row — avatar + name/sub + review button */
+.frc-mini-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid #ecf5ef;
+    transition: background 0.15s;
+}
+
+    .frc-mini-row:last-child {
+        border-bottom: none;
+    }
+
+    .frc-mini-row:hover {
+        background: #f6f9ff;
+        border-radius: 6px;
+    }
+
+/* Circular avatar with gradient background and initials */
+.frc-mini-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a2a33, #006aff);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+/* User full name */
+.frc-mini-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+/* IC / application number below name */
+.frc-mini-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* "Review" pill button — pushed to the right */
+.mini-review {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--green-mid);
+    padding: 4px 10px;
+    border: 1px solid var(--green-border);
+    border-radius: 6px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    margin-left: auto;
+}
+
+    .mini-review:hover {
+        background: var(--green-mid);
+        color: #fff;
+        border-color: var(--green-mid);
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 9 — AUDIT LOG TABLE
+   Full-width table in the right panel listing admin actions:
+   who did what, when, and on which record.
+   ────────────────────────────────────────────────────────── */
+.audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+    /* Column headers */
+    .audit-table th {
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-soft);
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--green-border);
+    }
+
+    /* Data cells */
+    .audit-table td {
+        padding: 10px 10px;
+        border-bottom: 1px solid #ecf5ef;
+        color: var(--text-dark);
+        vertical-align: middle;
+    }
+
+    .audit-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .audit-table tr:hover td {
+        background: #f6f9ff;
+        transition: background 0.15s;
+    }
+
+/* Truncated details cell — clips long text with ellipsis */
+.audit-details {
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 10 — UTILITIES (empty message, loading, spinner)
+   ────────────────────────────────────────────────────────── */
+
+/* Shown when a panel has no data yet */
+.empty-msg {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 20px 0;
+}
+
+/* Full-panel loading wrapper — centres the spinner */
+.loading-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--green-border);
+    border-top-color: var(--green-mid); /* Blue rotating segment */
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 11 — RESPONSIVE
+   ────────────────────────────────────────────────────────── */
+@media (max-width: 1000px) {
+    .stats-grid {
+        grid-template-columns: repeat(2,1fr);
+    }
+}
+
+@media (max-width: 860px) {
+    .panels-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+/* ── Admin modal (adm-modal-*) — avoids Bootstrap .modal conflict ── */
+/* Add these rules to adminconsole.css                                 */
+
+.adm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 20, 40, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 1060;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.adm-modal {
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 24px 60px rgba(10,20,40,0.22);
+    overflow: hidden;
+    position: relative;
+    z-index: 1061;
+    animation: admModalIn 0.22s ease both;
+}
+
+@keyframes admModalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.adm-modal-header {
+    background: var(--brand-secondary, #1f2937);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+    .adm-modal-header h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+
+.adm-modal-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+    .adm-modal-close:hover {
+        color: #f8fafc;
+        background: rgba(255,255,255,0.08);
+    }
+
+.adm-modal-body {
+    padding: 1.5rem;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.adm-modal-footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+/* ── Extra button variants needed ────────────────────────── */
+.btn-success {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+    .btn-success:hover:not(:disabled) {
+        background: #15803d;
+    }
+
+    .btn-success:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+.btn-warning {
+    background: #d97706;
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+    .btn-warning:hover:not(:disabled) {
+        background: #b45309;
+    }
+
+    .btn-warning:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #15803d;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.alert-error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.badge-amber {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}

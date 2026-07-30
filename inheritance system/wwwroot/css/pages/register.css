@@ -1,0 +1,657 @@
+/* ============================================================
+   FILE: register.css
+   PURPOSE: User registration / sign-up page.
+            Split two-panel layout:
+            LEFT  — marketing panel with hero background image,
+                    badge, headline, and step list
+            RIGHT — registration form (name, email, role, password)
+   DEPENDS ON: miras-theme.css
+   ============================================================ */
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 1 — BASE RESET
+   ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Source Sans 3', Inter, system-ui, sans-serif;
+    background: var(--green-light);
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 2 — REGISTER PAGE NAV BAR
+   Minimal white nav — just logo + "Already have an account?" link.
+   No user avatar or nav links (user is not logged in yet).
+   ────────────────────────────────────────────────────────── */
+.reg-nav {
+    background: var(--surface); /* White bar */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 3rem;
+    height: 64px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Logo block — icon + wordmark */
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+/* Blue square icon holding the "M" monogram */
+.nav-logo-box {
+    width: 36px;
+    height: 36px;
+    background: var(--green-mid);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: #a8d5b5;
+    font-weight: 700;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-brand:hover .nav-logo-box {
+    transform: scale(1.08);
+}
+/* Spring-bounce on hover */
+
+/* "MirasPro" wordmark */
+.nav-brand-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: -0.02em;
+}
+
+    .nav-brand-name span {
+        display: inline-block;
+        background: linear-gradient(135deg, #f0a93a 0%, #f7cc6b 60%, #e8903a 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+/* "Pro" in gold gradient — matches home.css */
+
+/* "Already have an account? Sign in" */
+.nav-login-link {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+    .nav-login-link a {
+        color: var(--brand-primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 3 — PAGE WRAPPER
+   Full-height flex row containing the left and right panels.
+   ────────────────────────────────────────────────────────── */
+.reg-page {
+    min-height: calc(100vh - 64px); /* Fills remaining viewport below nav */
+    display: flex;
+    align-items: stretch;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 4 — LEFT MARKETING PANEL
+   ═══════════════════════════════════════════════════════════
+   BACKGROUND IMAGE INSTRUCTIONS
+   ───────────────────────────────────────────────────────────
+   The hero-bg.jpg image is layered using multiple backgrounds:
+     1. A dark linear-gradient overlay (on top) — dims the photo
+        so white text remains readable (contrast ratio preserved).
+     2. The actual photo (underneath) — fills the panel.
+
+   TO REFERENCE THE IMAGE IN YOUR PROJECT:
+     • If register.css and hero-bg.jpg are in the same folder:
+         background-image: linear-gradient(...), url('hero-bg.jpg');
+     • If image is in an /images/ or /assets/ subfolder:
+         url('../images/hero-bg.jpg')   or   url('/assets/hero-bg.jpg')
+     • For ASP.NET / Razor Pages, put the image in wwwroot:
+         url('/images/hero-bg.jpg')
+     • For React / Vite, import or reference from /public:
+         url('/hero-bg.jpg')
+
+   DO NOT remove the gradient layer — without it the gold/white
+   text will become unreadable against the bright orange photo.
+   ═══════════════════════════════════════════════════════════ */
+.reg-left {
+    flex: 1;
+    /* Layer 1 (top): ONE subtle dark scrim — just enough to keep white
+       text readable without washing out the warm golden photo.
+       Using a single rgba black layer avoids the banding / colour-bars
+       that multiple gradient stops create.
+       Layer 2 (bottom): the actual property photo.                   */
+    background: linear-gradient( to bottom, rgba(0, 0, 0, 0.38) 0%, /* Very light top veil — preserves sky  */
+    rgba(0, 0, 0, 0.48) 100% /* Slightly deeper at bottom for text    */
+    ), url('/images/registerBg.jpeg') center center / cover no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4rem;
+    position: relative;
+    overflow: hidden;
+}
+
+    /* Subtle circular highlight — decorative depth layer over the photo */
+    .reg-left::before {
+        content: '';
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: rgba(76, 175, 125, 0.06);
+        pointer-events: none;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 5 — LEFT PANEL CONTENT
+   Badge, headline, description, and numbered step list.
+   All text is white or near-white over the dark overlay.
+   ────────────────────────────────────────────────────────── */
+
+/* "SECURE · TRUSTED · OFFICIAL" gold pill badge */
+.left-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(201, 168, 76, 0.4);
+    color: var(--gold);
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    width: fit-content;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+/* Main headline — "Manage Your Estate with Confidence" */
+.left-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.3;
+    margin-bottom: 1.25rem;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.3); /* Subtle shadow for depth over photo */
+}
+
+    .left-title span {
+        color: #a4bcde;
+        font-style: italic;
+    }
+/* Italic accent word */
+
+/* Paragraph below the headline */
+.left-desc {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.9;
+    margin-bottom: 2.5rem;
+    max-width: 380px;
+}
+
+/* Vertical list of numbered steps */
+.steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+/* Numbered circle — "1", "2", "3" */
+.step-num {
+    width: 30px;
+    height: 30px;
+    background: rgba(76, 175, 125, 0.15);
+    border: 1px solid rgba(76, 175, 125, 0.35);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #a4bcde;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Step heading — "Register your account" */
+.step-content-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+/* Step sub-text — "Takes less than 2 minutes" */
+.step-content-sub {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 6 — RIGHT FORM PANEL
+   White panel containing the actual sign-up form.
+   Fixed width on desktop; full-width on mobile.
+   ────────────────────────────────────────────────────────── */
+.reg-right {
+    width: 520px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2.5rem 3.5rem;
+    border-left: 1px solid var(--green-border);
+    overflow-y: auto; /* Scrolls if form content exceeds viewport height */
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 7 — FORM HEADER
+   "Create your account" heading + subtitle above the fields.
+   ────────────────────────────────────────────────────────── */
+.form-header {
+    margin-bottom: 1.75rem;
+}
+
+    .form-header h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+    }
+
+    .form-header p {
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+
+/* Thin horizontal divider with centred label — "PERSONAL DETAILS" */
+.form-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.form-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--green-border);
+}
+
+.form-divider-text {
+    font-size: 12px;
+    color: #9ab8a5;
+    letter-spacing: 0.5px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 8 — FORM FIELDS
+   Inputs, two-column row, and all base form element styles.
+   ────────────────────────────────────────────────────────── */
+
+/* Two side-by-side fields in one row — First Name / Last Name */
+.form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* Wrapper for each label + input pair */
+.form-group {
+    margin-bottom: 1.1rem;
+}
+
+/* Field label above each input */
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+/* Text / email / password inputs */
+.form-input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--green-border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--text-dark);
+    background: #fafcfb;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+    .form-input:focus {
+        border-color: var(--green-mid);
+        box-shadow: 0 0 0 3px rgba(0, 106, 255, 0.12); /* Blue glow */
+        background: #fff;
+    }
+
+    .form-input::placeholder {
+        color: #9ab8a5;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 9 — ROLE SELECTOR CARDS
+   Four clickable cards: Beneficiary / Legal Admin / Notary / Viewer
+   User taps one; JS adds .selected class; border highlights.
+   ────────────────────────────────────────────────────────── */
+.role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.1rem;
+}
+
+.role-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Individual role card */
+.role-card {
+    border: 1px solid var(--green-border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: center;
+    background: #fafcfb;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+    .role-card:hover {
+        border-color: var(--green-mid);
+        background: var(--green-light);
+    }
+
+    .role-card.selected {
+        border-color: var(--brand-primary);
+        background: var(--green-light);
+        box-shadow: 0 0 0 2px rgba(0, 106, 255, 0.15); /* Blue selection ring */
+    }
+
+.role-card-icon {
+    font-size: 22px;
+    margin-bottom: 5px;
+}
+
+.role-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin-bottom: 2px;
+}
+
+.role-card-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 10 — PASSWORD STRENGTH INDICATOR
+   Row of 3 coloured bars below the password input.
+   JS adds .weak / .medium / .strong classes.
+   ────────────────────────────────────────────────────────── */
+.password-strength {
+    margin-top: 6px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Single bar segment */
+.strength-bar {
+    height: 3px;
+    flex: 1;
+    border-radius: 2px;
+    background: var(--green-border);
+    transition: background 0.3s;
+}
+
+    .strength-bar.weak {
+        background: #ef4444;
+    }
+    /* Red   — weak password  */
+    .strength-bar.medium {
+        background: var(--gold);
+    }
+    /* Amber — medium         */
+    .strength-bar.strong {
+        background: var(--green-mid);
+    }
+/* Blue  — strong         */
+
+/* "Weak" / "Medium" / "Strong" text label beside the bars */
+.strength-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: 6px;
+    min-width: 50px;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 11 — TERMS & CONDITIONS ROW
+   Checkbox + "I agree to the Terms of Service..." text.
+   ────────────────────────────────────────────────────────── */
+.terms-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+}
+
+    .terms-row input[type="checkbox"] {
+        accent-color: var(--green-mid);
+        width: 15px;
+        height: 15px;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+.terms-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+    .terms-text a {
+        color: var(--green-primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 12 — SUBMIT BUTTON
+   Full-width "Create Account" button below the form.
+   ────────────────────────────────────────────────────────── */
+.btn-register {
+    width: 100%;
+    padding: 13px;
+    background: var(--green-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Source Sans 3', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s var(--ease-out), box-shadow 0.2s;
+    margin-bottom: 1rem;
+}
+
+    .btn-register:hover {
+        background: var(--green-mid);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(0, 106, 255, 0.3);
+    }
+
+    .btn-register:disabled {
+        background: #9ab8a5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+/* "Already have an account? Sign in" link below the button */
+.login-prompt {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+    .login-prompt a {
+        color: var(--green-primary);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 13 — ALERT BANNERS
+   Shown inside the form on submission success or error.
+   ────────────────────────────────────────────────────────── */
+/* Error — red tint (email already exists, server error) */
+.alert-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #dc2626;
+    margin-bottom: 1.1rem;
+}
+
+/* Success — green tint (account created, check email) */
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #15803d;
+    margin-bottom: 1.1rem;
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 14 — LOADING SPINNER (inside submit button)
+   Shown while the registration API call is in flight.
+   ────────────────────────────────────────────────────────── */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 15 — PAGE FOOTER
+   Dark footer bar at the very bottom — copyright + links.
+   ────────────────────────────────────────────────────────── */
+.reg-footer {
+    background: #12121f;
+    padding: 1.25rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(76, 175, 125, 0.1);
+}
+
+    .reg-footer p {
+        font-size: 12px;
+        color: #3a6a4e;
+    }
+
+    .reg-footer a {
+        font-size: 12px;
+        color: #4a7a5e;
+        text-decoration: none;
+    }
+
+
+/* ──────────────────────────────────────────────────────────
+   SECTION 16 — RESPONSIVE BREAKPOINTS
+   ────────────────────────────────────────────────────────── */
+
+/* Mobile — hide left panel, form takes full width */
+@media (max-width: 768px) {
+    .reg-left {
+        display: none;
+    }
+    /* Photo panel hidden on small screens */
+    .reg-right {
+        width: 100%;
+        padding: 2rem 1.5rem;
+    }
+
+    .reg-nav {
+        padding: 0 1rem;
+    }
+
+    .form-row-2 {
+        grid-template-columns: 1fr;
+    }
+    /* Stack name fields */
+    .role-grid {
+        grid-template-columns: 1fr;
+    }
+    /* Stack role cards  */
+}

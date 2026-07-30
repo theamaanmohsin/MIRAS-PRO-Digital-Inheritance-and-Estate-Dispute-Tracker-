@@ -1,0 +1,325 @@
+@page "/properties/{Id:int}"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.PropertyService PropertySvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a class="active" href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+        <li><a href="/frc">FRC</a></li>
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+@if (isLoading)
+{
+    <div class="loading" style="margin-top:4rem;"><span class="spinner"></span> Loading property...</div>
+}
+else if (detail == null)
+{
+    <div style="max-width:600px;margin:4rem auto;padding:0 2rem;">
+        <div class="alert-error">&#x26A0; Property not found or you don't have access.</div>
+        <a href="/properties" style="color:var(--green-mid);text-decoration:none;font-size:14px;">&#x2190; Back to Properties</a>
+    </div>
+}
+else
+{
+    <!-- HERO -->
+    <div class="prop-hero">
+        <div class="hero-inner">
+            <div class="breadcrumb">
+                <a href="/dashboard">Dashboard</a>
+                <span>&#x203A;</span>
+                <a href="/properties">Properties</a>
+                <span>&#x203A;</span>
+                <span>@detail.Title</span>
+            </div>
+            <div class="hero-top">
+                <div>
+                    <h1>@detail.Title</h1>
+                    <div class="hero-meta">
+                        @if (!string.IsNullOrEmpty(detail.Location))
+                        {
+                            <span class="hero-meta-item">&#x1F4CD; @detail.Location</span>
+                        }
+                        <span class="pill @TypePillClass(detail.PropertyType)">@(string.IsNullOrEmpty(detail.PropertyType) ? "Unknown" : detail.PropertyType)</span>
+                        <span class="hero-meta-item">&#x1F4C5; Registered @detail.CreatedAt.ToString("dd MMM yyyy")</span>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn-edit" @onclick="GoToEdit">&#x270E; Edit Property</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATS STRIP -->
+    <div class="stats-strip">
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="s-label">Estimated Value</div>
+                <div class="s-value">PKR @FormatPkr(detail.EstimatedValue)</div>
+                <div class="s-sub">Current valuation</div>
+            </div>
+            <div class="stat-box">
+                <div class="s-label">Heirs</div>
+                <div class="s-value">@detail.Heirs.Count</div>
+                <div class="s-sub">Registered heirs</div>
+            </div>
+            <div class="stat-box">
+                <div class="s-label">Cases</div>
+                <div class="s-value">@detail.Cases.Count</div>
+                <div class="s-sub">Inheritance cases</div>
+            </div>
+            <div class="stat-box">
+                <div class="s-label">Documents</div>
+                <div class="s-value">@detail.Documents.Count</div>
+                <div class="s-sub">Files on record</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABS + CONTENT -->
+    <div class="page-content">
+        <div class="tabs">
+            <button class="tab-btn @(activeTab == "overview" ? "active" : "")" @onclick='() => activeTab = "overview"'>Overview</button>
+            <button class="tab-btn @(activeTab == "heirs" ? "active" : "")" @onclick='() => activeTab = "heirs"'>Heirs (@detail.Heirs.Count)</button>
+            <button class="tab-btn @(activeTab == "cases" ? "active" : "")" @onclick='() => activeTab = "cases"'>Cases (@detail.Cases.Count)</button>
+            <button class="tab-btn @(activeTab == "transfers" ? "active" : "")" @onclick='() => activeTab = "transfers"'>Transfers (@detail.Transfers.Count)</button>
+            <button class="tab-btn @(activeTab == "documents" ? "active" : "")" @onclick='() => activeTab = "documents"'>Documents (@detail.Documents.Count)</button>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        @if (activeTab == "overview")
+        {
+            <div class="overview-grid">
+                <div class="info-card">
+                    <h4>Property Details</h4>
+                    <div class="info-row"><span class="i-label">Title</span><span class="i-value">@detail.Title</span></div>
+                    <div class="info-row"><span class="i-label">Type</span><span class="i-value">@(string.IsNullOrEmpty(detail.PropertyType) ? "—" : detail.PropertyType)</span></div>
+                    <div class="info-row"><span class="i-label">Location</span><span class="i-value">@(string.IsNullOrEmpty(detail.Location) ? "—" : detail.Location)</span></div>
+                    <div class="info-row"><span class="i-label">Estimated Value</span><span class="i-value">PKR @FormatPkr(detail.EstimatedValue)</span></div>
+                    <div class="info-row"><span class="i-label">Registered On</span><span class="i-value">@detail.CreatedAt.ToString("dd MMMM yyyy")</span></div>
+                </div>
+                <div class="info-card">
+                    <h4>Summary</h4>
+                    <div class="info-row"><span class="i-label">Total Heirs</span><span class="i-value">@detail.Heirs.Count</span></div>
+                    <div class="info-row"><span class="i-label">Active Cases</span><span class="i-value">@detail.Cases.Count(c => c.Status.ToLower() == "active")</span></div>
+                    <div class="info-row"><span class="i-label">Pending Transfers</span><span class="i-value">@detail.Transfers.Count(t => t.Status.ToLower() == "pending")</span></div>
+                    <div class="info-row"><span class="i-label">Documents Filed</span><span class="i-value">@detail.Documents.Count</span></div>
+                    <div class="info-row"><span class="i-label">Total Share Assigned</span><span class="i-value">@detail.Heirs.Sum(h => h.SharePercentage).ToString("0.##")%</span></div>
+                </div>
+            </div>
+        }
+
+        <!-- HEIRS TAB -->
+        @if (activeTab == "heirs")
+        {
+            <div class="section-card">
+                @if (!detail.Heirs.Any())
+                {
+                    <div class="empty-tab"><div class="em-icon">&#x1F464;</div><p>No heirs registered for this property.</p></div>
+                }
+                else
+                {
+                    <table>
+                        <thead><tr><th>Full Name</th><th>Relationship</th><th>National ID</th><th>Share %</th></tr></thead>
+                        <tbody>
+                            @foreach (var h in detail.Heirs)
+                            {
+                                <tr>
+                                    <td>@h.FullName</td>
+                                    <td>@(string.IsNullOrEmpty(h.Relationship) ? "—" : h.Relationship)</td>
+                                    <td>@(string.IsNullOrEmpty(h.NationalId) ? "—" : h.NationalId)</td>
+                                    <td>@h.SharePercentage.ToString("0.##")%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+
+        <!-- CASES TAB -->
+        @if (activeTab == "cases")
+        {
+            <div class="section-card">
+                @if (!detail.Cases.Any())
+                {
+                    <div class="empty-tab"><div class="em-icon">&#x1F4CB;</div><p>No inheritance cases linked to this property.</p></div>
+                }
+                else
+                {
+                    <table>
+                        <thead><tr><th>Case Number</th><th>Status</th><th>Created</th></tr></thead>
+                        <tbody>
+                            @foreach (var c in detail.Cases)
+                            {
+                                <tr>
+                                    <td>@(string.IsNullOrEmpty(c.CaseNumber) ? $"CASE-{c.CaseId}" : c.CaseNumber)</td>
+                                    <td><span class="pill @StatusPillClass(c.Status)">@c.Status</span></td>
+                                    <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+
+        <!-- TRANSFERS TAB -->
+        @if (activeTab == "transfers")
+        {
+            <div class="section-card">
+                @if (!detail.Transfers.Any())
+                {
+                    <div class="empty-tab"><div class="em-icon">&#x1F4E6;</div><p>No transfers recorded for this property.</p></div>
+                }
+                else
+                {
+                    <table>
+                        <thead><tr><th>Transfer To</th><th>Status</th><th>Date</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in detail.Transfers)
+                            {
+                                <tr>
+                                    <td>@(string.IsNullOrEmpty(t.TransferTo) ? "—" : t.TransferTo)</td>
+                                    <td><span class="pill @StatusPillClass(t.Status)">@t.Status</span></td>
+                                    <td>@t.CreatedAt.ToString("dd MMM yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+
+        <!-- DOCUMENTS TAB -->
+        @if (activeTab == "documents")
+        {
+            <div class="section-card">
+                @if (!detail.Documents.Any())
+                {
+                    <div class="empty-tab"><div class="em-icon">&#x1F4C4;</div><p>No documents uploaded for this property.</p></div>
+                }
+                else
+                {
+                    <table>
+                        <thead><tr><th>Document Title</th><th>File Type</th><th>Uploaded</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in detail.Documents)
+                            {
+                                <tr>
+                                    <td>@(string.IsNullOrEmpty(d.Title) ? "Untitled Document" : d.Title)</td>
+                                    <td>@(string.IsNullOrEmpty(d.FileType) ? "—" : d.FileType.ToUpper())</td>
+                                    <td>@d.UploadedAt.ToString("dd MMM yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private inheritance_system.Services.PropertyDetail? detail;
+    private bool isLoading = true;
+    private string activeTab = "overview";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            detail = await PropertySvc.GetPropertyDetailAsync(Id, CurrentUser.UserId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PROPERTY DETAIL ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoToEdit() => Navigation.NavigateTo($"/properties");
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string FormatPkr(decimal v)
+    {
+        if (v >= 10_000_000m) return $"{v / 10_000_000m:0.##} Crore";
+        if (v >= 100_000m) return $"{v / 100_000m:0.##} Lakh";
+        return v.ToString("N0");
+    }
+
+    private string TypePillClass(string t) => t?.ToLower() switch
+    {
+        "residential" => "pill-residential",
+        "commercial" => "pill-commercial",
+        "digital" => "pill-digital",
+        "agricultural" => "pill-agricultural",
+        _ => "pill-active"
+    };
+
+    private string StatusPillClass(string s) => s?.ToLower() switch
+    {
+        "active" => "pill-active",
+        "pending" => "pill-pending",
+        "under review" => "pill-pending",
+        "closed" => "pill-closed",
+        "resolved" => "pill-active",
+        _ => "pill-active"
+    };
+}

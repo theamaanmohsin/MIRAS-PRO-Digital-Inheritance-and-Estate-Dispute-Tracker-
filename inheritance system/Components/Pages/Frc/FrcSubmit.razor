@@ -1,0 +1,194 @@
+@page "/frc"
+@using InheritanceSystem.Models
+@using inheritance_system.Services
+@inject FrcService FrcSvc
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Nav
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>FRC Certificate</PageTitle>
+
+@if (!_ready)
+{
+    <div class="frc-waiting"><div class="waiting-spinner"></div></div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Family Registration Certificate</h1>
+            <p class="page-sub">Submit your FRC to verify your legal family status</p>
+        </div>
+    </div>
+
+    @if (_existing != null)
+    {
+        <div class="frc-status-banner frc-status-@_existing.Status.ToLower()">
+            <div class="frc-status-content">
+                <div class="frc-status-title">
+                    @if (_existing.IsApproved())
+                    {
+                        <span>? FRC Approved — Profile Locked</span>
+                    }
+                    else if (_existing.IsRejected())
+                    {
+
+                        <span>? FRC Rejected — Please Resubmit</span>
+                    }
+                    else
+                    {
+
+                        <span>? FRC Pending Review</span>
+                    }
+                </div>
+                <div class="frc-status-sub">
+                    FRC # @_existing.FrcNumber ·
+                    Submitted @_existing.UploadedAt.ToString("d MMM yyyy")
+                </div>
+                @if (!string.IsNullOrEmpty(_existing.AdminNotes))
+                {
+                    <div class="frc-admin-feedback">
+                        <strong>Admin Note:</strong> @_existing.AdminNotes
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="admin-alert-banner" style="margin-bottom:16px">
+            <span>@_message</span>
+        </div>
+    }
+
+    @if (_canSubmit)
+    {
+        <div class="form-card" style="max-width:580px">
+            <div class="form-card-header">
+                <h3>
+                    @(_existing?.IsRejected() == true
+                        ? "Resubmit Your FRC"
+                        : "Submit Your FRC")
+                </h3>
+                @if (_existing?.IsRejected() == true)
+                {
+                    <span class="badge badge-red">Resubmission</span>
+                }
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">FRC Number *</label>
+                <input type="text" class="form-input"
+                       placeholder="e.g. B-42201-0123456"
+                       maxlength="100"
+                       @bind="_frcNumber" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Certificate Document *</label>
+                <InputFile OnChange="OnFileSelected"
+                           accept=".pdf,.jpg,.jpeg,.png"
+                           class="form-input" style="padding:8px" />
+                <div class="form-hint">PDF, JPG, PNG — max 10 MB</div>
+                @if (_selectedFile != null)
+                {
+                    <div style="font-size:12px;color:var(--teal);margin-top:4px">
+                        ? @_selectedFile.Name
+                        (@((_selectedFile.Size / 1024.0).ToString("N0")) KB)
+                    </div>
+                }
+            </div>
+
+            <button class="btn btn-primary btn-block" @onclick="Submit">
+                Submit for Verification
+            </button>
+        </div>
+    }
+    else if (_existing?.IsApproved() == true)
+    {
+        <div class="frc-locked-notice">
+            <div class="locked-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     style="width:32px;height:32px">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+            </div>
+            <h3>Profile Verified &amp; Locked</h3>
+            <p>
+                Your FRC has been verified by the administrator.
+                Your profile is now part of an immutable legal record.
+            </p>
+        </div>
+    }
+    else if (_existing?.IsPending() == true)
+    {
+        <div class="frc-waiting">
+            <div class="waiting-spinner"></div>
+            <h3>Under Review</h3>
+            <p>
+                Your FRC is awaiting administrator review.
+                You will be notified if any corrections are needed.
+            </p>
+        </div>
+    }
+}
+
+@code {
+    bool _ready = false;
+    bool _canSubmit;
+    FrcDocument? _existing;
+    string _frcNumber = "";
+    string _message = "";
+    IBrowserFile? _selectedFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+
+        if (CurrentUser.IsUser)
+        {
+            Nav.NavigateTo("/heirs", forceLoad: true);
+            return;
+        }
+
+        _existing = await FrcSvc.GetLatestByUserAsync(CurrentUser.UserId);
+        _canSubmit = _existing == null || _existing.IsRejected();
+        _ready = true;
+    }
+
+    void OnFileSelected(InputFileChangeEventArgs e) =>
+        _selectedFile = e.File;
+
+    async Task Submit()
+    {
+        _message = "";
+
+        if (string.IsNullOrWhiteSpace(_frcNumber))
+        { _message = "FRC number is required."; return; }
+
+        if (_selectedFile == null)
+        { _message = "Please select a document to upload."; return; }
+
+        await using var stream =
+            _selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+
+        var (ok, msg) = await FrcSvc.SubmitAsync(
+            CurrentUser.UserId,
+            _frcNumber,
+            stream,
+            _selectedFile.Name,
+            _selectedFile.Size);
+
+        _message = msg;
+        _existing = await FrcSvc.GetLatestByUserAsync(CurrentUser.UserId);
+        _canSubmit = _existing == null || _existing.IsRejected();
+    }
+}

@@ -1,0 +1,419 @@
+@page "/properties"
+@layout EmptyLayout
+@inject inheritance_system.Services.CurrentUserService CurrentUser
+@inject inheritance_system.Services.PropertyService PropertySvc
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<HeadContent>
+    <title>MirasPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</HeadContent>
+
+
+
+<!-- NAV -->
+<nav class="dash-nav">
+    <a href="/" class="nav-brand">
+        <div class="nav-logo-box">&#x645;</div>
+        <span class="nav-brand-name">Miras<span>Pro</span></span>
+    </a>
+    <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a class="active" href="/properties">Properties</a></li>
+        <li><a href="/heirs">Heirs</a></li>
+        <li><a href="/faraid">Faraid</a></li>
+        <li><a href="/disputes">Disputes</a></li>
+        <li><a href="/documents">Documents</a></li>
+        
+    </ul>
+    <div class="nav-user">
+        @if (CurrentUser.IsLoggedIn)
+        {
+            <div class="user-avatar">@GetInitials(CurrentUser.FullName)</div>
+            <div class="user-info">
+                <strong>@CurrentUser.FullName</strong>
+                <small>@CurrentUser.Role.ToUpper()</small>
+            </div>
+        }
+        <button class="btn-logout" @onclick="HandleLogout">Logout</button>
+    </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="header-inner">
+        <div class="header-left">
+            <h1>Your <span>Properties</span></h1>
+            <p>Manage all registered properties, heirs, and inheritance cases</p>
+        </div>
+        <button class="btn-primary" @onclick="OpenAddModal">&#x2B; Register Property</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="page-main">
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert-success">&#x2713; @successMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert-error">&#x26A0; @errorMessage</div>
+    }
+
+    @if (!CurrentUser.CanModifyRecords)
+    {
+        <div class="read-only-banner">You can register new properties but cannot edit or delete existing entries.</div>
+    }
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <div class="search-wrap">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" placeholder="Search by title or location..."
+                   value="@searchQuery" @oninput="OnSearchChanged" />
+        </div>
+        <select class="filter-select" @bind="typeFilter" @bind:after="LoadProperties">
+            <option value="">All Types</option>
+            <option value="Residential">Residential</option>
+            <option value="Commercial">Commercial</option>
+            <option value="Agricultural">Agricultural</option>
+            <option value="Digital">Digital</option>
+        </select>
+        <span class="result-count">@properties.Count propert@(properties.Count == 1 ? "y" : "ies") found</span>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+        @if (isLoading)
+        {
+            <div class="loading"><span class="spinner"></span> Loading properties...</div>
+        }
+        else if (properties.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="em-icon">&#x1F3DB;</div>
+                <h3>No properties found</h3>
+                <p>@(string.IsNullOrEmpty(searchQuery) ? "Register your first property to get started." : "Try a different search term or filter.")</p>
+                @if (string.IsNullOrEmpty(searchQuery))
+                {
+                    <button class="btn-primary" @onclick="OpenAddModal">&#x2B; Register Property</button>
+                }
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Type</th>
+                        <th>Heirs</th>
+                        <th>Estimated Value</th>
+                        <th>Status</th>
+                        <th>Registered</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in properties)
+                    {
+                        <tr>
+                            <td>
+                                <div class="prop-title">@p.Title</div>
+                                <div class="prop-meta">&#x1F4CD; @(string.IsNullOrEmpty(p.Location) ? "—" : p.Location)</div>
+                            </td>
+                            <td><span class="pill @TypePillClass(p.PropertyType)">@(string.IsNullOrEmpty(p.PropertyType) ? "—" : p.PropertyType)</span></td>
+                            <td>@p.HeirCount heir@(p.HeirCount == 1 ? "" : "s")</td>
+                            <td>PKR @FormatPkr(p.EstimatedValue)</td>
+                            <td><span class="pill @StatusPillClass(p.Status)">@p.Status</span></td>
+                            <td>@p.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="icon-btn" title="View" @onclick="() => ViewProperty(p.PropertyId)">&#x1F441;</button>
+                                    @if (CurrentUser.CanModifyRecords)
+                                    {
+                                        <button class="icon-btn" title="Edit" @onclick="() => OpenEditModal(p.PropertyId)">&#x270E;</button>
+                                        <button class="icon-btn danger" title="Delete" @onclick="() => OpenDeleteConfirm(p.PropertyId, p.Title)">&#x1F5D1;</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</main>
+
+<!-- ADD / EDIT MODAL -->
+@if (showFormModal)
+{
+    <div class="prop-modal-overlay" @onclick="CloseFormModal">
+        <div class="prop-modal" @onclick:stopPropagation="true">
+            <div class="prop-modal-header">
+                <h3>@(editingId == 0 ? "Register New Property" : "Edit Property")</h3>
+                <button class="prop-modal-close" @onclick="CloseFormModal">&#x2715;</button>
+            </div>
+            <div class="prop-modal-body">
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert-error" style="margin-bottom:1rem;">&#x26A0; @formError</div>
+                }
+                <div class="form-group">
+                    <label class="form-label">Property Title *</label>
+                    <input class="form-input" type="text" placeholder="e.g. House in Gulberg, Lahore"
+                           @bind="formTitle" />
+                </div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label class="form-label">Property Type</label>
+                        <select class="form-input" @bind="formType">
+                            <option value="">Select type</option>
+                            <option value="Residential">Residential</option>
+                            <option value="Commercial">Commercial</option>
+                            <option value="Agricultural">Agricultural</option>
+                            <option value="Digital">Digital</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Value (PKR)</label>
+                        <input class="form-input" type="number" placeholder="0"
+                               @bind="formValue" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input class="form-input" type="text" placeholder="e.g. Gulberg III, Lahore"
+                           @bind="formLocation" />
+                </div>
+            </div>
+            <div class="prop-modal-footer">
+                <button class="btn-secondary" @onclick="CloseFormModal">Cancel</button>
+                <button class="btn-save" @onclick="SaveProperty" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : (editingId == 0 ? "Register Property" : "Save Changes"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- DELETE CONFIRM MODAL -->
+@if (showDeleteModal)
+{
+    <div class="prop-modal-overlay" @onclick="CloseDeleteModal">
+        <div class="prop-modal" style="max-width:420px;" @onclick:stopPropagation="true">
+            <div class="prop-modal-header">
+                <h3>Delete Property</h3>
+                <button class="prop-modal-close" @onclick="CloseDeleteModal">&#x2715;</button>
+            </div>
+            <div class="prop-modal-body">
+                <div class="confirm-icon">&#x1F5D1;</div>
+                <p class="confirm-msg">Are you sure you want to delete<br><strong>"@deletingTitle"</strong>?<br><br>This will permanently remove the property and all associated records.</p>
+            </div>
+            <div class="prop-modal-footer">
+                <button class="btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                <button class="btn-danger" @onclick="ConfirmDelete" disabled="@isSaving">
+                    @(isSaving ? "Deleting..." : "Delete Property")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<inheritance_system.Services.PropertyListItem> properties = new();
+    private bool isLoading = true;
+    private string searchQuery = "";
+    private string typeFilter = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    // Form modal
+    private bool showFormModal = false;
+    private bool isSaving = false;
+    private int editingId = 0;
+    private string formTitle = "";
+    private string formType = "";
+    private string formLocation = "";
+    private decimal formValue = 0;
+    private string formError = "";
+
+    // Delete modal
+    private bool showDeleteModal = false;
+    private int deletingId = 0;
+    private string deletingTitle = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CurrentUser.LoadFromSessionAsync();
+        if (!CurrentUser.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login/user", forceLoad: true);
+            return;
+        }
+        await LoadProperties();
+    }
+
+    private async Task LoadProperties()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+            properties = await PropertySvc.GetPropertiesAsync(CurrentUser.UserId, searchQuery, typeFilter);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Could not load properties. Please ensure SQL Server is running.";
+            Console.WriteLine($"PROPERTIES ERROR: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private System.Threading.CancellationTokenSource? _searchCts;
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        _searchCts = new System.Threading.CancellationTokenSource();
+        try
+        {
+            await Task.Delay(350, _searchCts.Token);
+            await LoadProperties();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    // ── FORM MODAL ──────────────────────────────────────────
+    private void OpenAddModal()
+    {
+        editingId = 0;
+        formTitle = ""; formType = ""; formLocation = ""; formValue = 0; formError = "";
+        showFormModal = true;
+    }
+
+    private async Task OpenEditModal(int id)
+    {
+        var prop = await PropertySvc.GetByIdAsync(id, CurrentUser.UserId);
+        if (prop == null) { errorMessage = "Property not found."; return; }
+        editingId = id;
+        formTitle = prop.Title;
+        formType = prop.PropertyType ?? "";
+        formLocation = prop.Location ?? "";
+        formValue = prop.EstimatedValue;
+        formError = "";
+        showFormModal = true;
+    }
+
+    private void CloseFormModal() { showFormModal = false; }
+
+    private async Task SaveProperty()
+    {
+        formError = "";
+        if (string.IsNullOrWhiteSpace(formTitle))
+        { formError = "Property title is required."; return; }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (editingId == 0)
+            {
+                var (success, msg, _) = await PropertySvc.CreateAsync(
+                    CurrentUser.UserId, formTitle, formType, formLocation, formValue);
+                if (success) { successMessage = msg; showFormModal = false; await LoadProperties(); }
+                else formError = msg;
+            }
+            else
+            {
+                var (success, msg) = await PropertySvc.UpdateAsync(
+                    editingId, CurrentUser.UserId, formTitle, formType, formLocation, formValue);
+                if (success) { successMessage = msg; showFormModal = false; await LoadProperties(); }
+                else formError = msg;
+            }
+        }
+        catch (Exception ex)
+        {
+            formError = "An error occurred. Please try again.";
+            Console.WriteLine($"SAVE ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    // ── DELETE MODAL ─────────────────────────────────────────
+    private void OpenDeleteConfirm(int id, string title)
+    {
+        deletingId = id; deletingTitle = title; showDeleteModal = true;
+    }
+    private void CloseDeleteModal() { showDeleteModal = false; }
+
+    private async Task ConfirmDelete()
+    {
+        isSaving = true;
+        StateHasChanged();
+        try
+        {
+            var (success, msg) = await PropertySvc.DeleteAsync(deletingId, CurrentUser.UserId);
+            successMessage = success ? msg : "";
+            if (!success) errorMessage = msg;
+            showDeleteModal = false;
+            await LoadProperties();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Delete failed. Please try again.";
+            Console.WriteLine($"DELETE ERROR: {ex.Message}");
+        }
+        finally { isSaving = false; StateHasChanged(); }
+    }
+
+    private void ViewProperty(int id) => Navigation.NavigateTo($"/properties/{id}");
+    private async Task HandleLogout()
+    {
+        await CurrentUser.LogoutAsync();
+        Navigation.NavigateTo("/login/user", forceLoad: true);
+    }
+
+    // ── HELPERS ──────────────────────────────────────────────
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..1].ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    private string FormatPkr(decimal v)
+    {
+        if (v >= 10_000_000m) return $"{v / 10_000_000m:0.##} Crore";
+        if (v >= 100_000m) return $"{v / 100_000m:0.##} Lakh";
+        return v.ToString("N0");
+    }
+
+    private string TypePillClass(string t) => t?.ToLower() switch
+    {
+        "residential" => "pill-residential",
+        "commercial" => "pill-commercial",
+        "digital" => "pill-digital",
+        "agricultural" => "pill-agricultural",
+        _ => "pill-active"
+    };
+
+    private string StatusPillClass(string s) => s?.ToLower() switch
+    {
+        "active" => "pill-active",
+        "pending" => "pill-pending",
+        "under review" => "pill-pending",
+        "closed" => "pill-closed",
+        "resolved" => "pill-active",
+        _ => "pill-active"
+    };
+}
